@@ -67,21 +67,13 @@ Updated To Version 4.0
 ---
 
 🏆 Credits & Contributors
-
-<p align="center">  
-  <a href="https://github.com/XDTechPro/KHAN-MD/graphs/contributors">
-    <img src="https://img.shields.io/badge/Credits%20&%20Contributors-%F0%9F%8F%86%20%F0%9F%94%92-FFD700?style=for-the-badge&logo=Handshake&logoColor=black"/>
-  </a>  
-</p>  👑 KHAN-MD Owner
-
-👤 JawadTechX – Creator & Owner
-
-
-🚀 KHAN-MD Contributors
-
-🛠 ROMEKTRICKS – Plugin Development
-
-
+> KHAN-MD Owner 
+- [JawadTechX](https://github.com/XdTechPro)
+- Creater and Owner Of KHAN-MD
+> KHAN-MD Helpers 
+- [ROMEKTRICKS](https://github.com/ROMEKTRICKS)
+- For helping in bot plugin files.
+  
 
 
 
