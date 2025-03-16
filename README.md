@@ -12,7 +12,7 @@ KHAN-MD BY JawadTechX 💜
 
 --- 
 
-<a><img src='https://cdn.ironman.my.id/i/0wj4fx.jpg'/></a>
+<a><img src='https://cdn.ironman.my.id/i/9zd4if.jpg'/></a>
 
 ---
 
