@@ -4,7 +4,7 @@ const { Buffer } = require('buffer');
 
 cmd({
     pattern: "topdf",
-    alias: "pdf",
+    alias: ["pdf","topdf"],use: '.topdf',
     desc: "Convert provided text to a PDF file.",
     react: "📄",
     category: "utilities",
