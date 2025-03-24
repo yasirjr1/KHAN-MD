@@ -36,7 +36,7 @@ cmd({
     const apiUrl = `https://api.vreden.my.id/api/ytmp3?url=${videoUrl}`;
     const response = await axios.get(apiUrl);
     if (!response.data.result.status) {
-      return reply("❌ Error fetching the MP3 file.");
+      throw new Error("Failed to fetch the MP3 file.");
     }
 
     const { url } = response.data.result.download;
@@ -49,7 +49,18 @@ cmd({
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Error:", error);
+
+    // Send detailed error logs to WhatsApp
+    const errorMessage = `
+*❌ Play Command Error Logs*
+
+*Error Message:* ${error.message}
+*Stack Trace:* ${error.stack || "Not available"}
+*Timestamp:* ${new Date().toISOString()}
+`;
+
+    await conn.sendMessage(from, { text: errorMessage }, { quoted: mek });
     reply("❌ An error occurred while processing your request.");
   }
 });
