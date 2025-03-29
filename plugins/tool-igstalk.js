@@ -1,44 +1,53 @@
 const { cmd } = require('../command');
-const fetch = require('node-fetch');
+const axios = require('axios');
 
 cmd({
-    pattern: "igstalk",
-    description: "Fetch Instagram profile details.",
-    category: "utility",
-    react: "📸",
+    pattern: 'igstalk',
+    desc: 'Fetch Instagram user details',
+    category: 'stalk',
+    react: '📸',
     filename: __filename
-}, async (conn, mek, m, { args, reply }) => {
-    if (args.length === 0) return reply("⚠️ Please provide an Instagram username! Example: .igstalk jawadik.35");
-    
-    const username = args[0];
-    const apiUrl = `https://apizell.web.id/stalk/instagram?username=${username}`;
-    
+}, async (conn, mek, m, { from, args, reply }) => {
     try {
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        
-        if (!data.status) return reply("❌ Failed to fetch profile details. Please check the username!");
-        
-        const result = data.result;
-        let caption = `📸 *Instagram Stalk*
-━━━━━━━━━━━━━━━━
-👤 *Name:* ${result.full_name}
-🔹 *Username:* @${result.username}
-🔒 *Private:* ${result.is_private ? "Yes" : "No"}
-✅ *Verified:* ${result.is_verified ? "Yes" : "No"}
-👥 *Followers:* ${result.follower_count}
-👣 *Following:* ${result.following_count}
-📸 *Posts:* ${result.media_count}
-📝 *Bio:* ${result.biography || "N/A"}
-🔗 *Link:* ${result.external_url || "N/A"}`;
-        
-        await conn.sendMessage(m.chat, {
-            image: { url: result.profile_pic_url_hd },
-            caption: caption
-        }, { quoted: mek });
-        
-    } catch (error) {
-        console.error("Error fetching Instagram profile:", error);
-        reply("❌ Failed to fetch profile. Please try again later.");
+        if (!args[0]) return reply('Please provide an Instagram username.');
+        const username = args[0];
+        const apiUrl = `https://apizell.web.id/stalk/instagram?username=${username}`;
+
+        const { data } = await axios.get(apiUrl);
+
+        if (!data.status) return reply('User not found or API error.');
+
+        const user = data.result;
+        const profilePic = user.profile_pic_url_hd || user.profile_pic_url;
+        const bioLink = user.bio_links?.[0]?.url || 'None';
+        const externalUrl = user.external_url || 'None';
+
+        const message = `*Instagram Profile Stalk*
+
+` +
+            `👤 *Username:* ${user.username}
+` +
+            `📛 *Full Name:* ${user.full_name}
+` +
+            `🔒 *Private:* ${user.is_private ? 'Yes' : 'No'}
+` +
+            `✅ *Verified:* ${user.is_verified ? 'Yes' : 'No'}
+` +
+            `👥 *Followers:* ${user.follower_count}
+` +
+            `👣 *Following:* ${user.following_count}
+` +
+            `📝 *Posts:* ${user.media_count}
+` +
+            `📄 *Biography:* ${user.biography}
+` +
+            `🔗 *External URL:* ${externalUrl}
+` +
+            `🌐 *Bio Link:* ${bioLink}`;
+
+        await conn.sendMessage(from, { image: { url: profilePic }, caption: message }, { quoted: mek });
+    } catch (e) {
+        console.log(e);
+        reply('An error occurred while fetching the profile.');
     }
 });
