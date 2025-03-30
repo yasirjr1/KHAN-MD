@@ -79,6 +79,77 @@ async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sen
 });
 
 cmd({
+    pattern: "logo",
+    alias: ["logomenu"],
+    desc: "menu the bot",
+    category: "menu",
+    react: "🧃",
+    filename: __filename
+}, 
+async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply }) => {
+    try {
+        let dec = `╭━━〔 *Logo List* 〕━━┈⊷
+┃◈╭─────────────·๏
+┃◈┃• neonlight
+┃◈┃• blackpink
+┃◈┃• dragonball
+┃◈┃• 3dcomic
+┃◈┃• america
+┃◈┃• naruto
+┃◈┃• sadgirl
+┃◈┃• clouds
+┃◈┃• futuristic
+┃◈┃• 3dpaper
+┃◈┃• eraser
+┃◈┃• sunset
+┃◈┃• leaf
+┃◈┃• galaxy
+┃◈┃• sans
+┃◈┃• boom
+┃◈┃• hacker
+┃◈┃• devilwings
+┃◈┃• nigeria
+┃◈┃• bulb
+┃◈┃• angelwings
+┃◈┃• zodiac
+┃◈┃• luxury
+┃◈┃• paint
+┃◈┃• frozen
+┃◈┃• castle
+┃◈┃• tatoo
+┃◈┃• valorant
+┃◈┃• bear
+┃◈┃• typography
+┃◈┃• birthday
+┃◈└───────────┈⊷
+╰──────────────┈⊷`;
+
+        await conn.sendMessage(
+            from,
+            {
+                image: { url: `https://files.catbox.moe/7zfdcq.jpg` },
+                caption: dec,
+                contextInfo: {
+                    mentionedJid: [m.sender],
+                    forwardingScore: 999,
+                    isForwarded: true,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: '120363354023106228@newsletter',
+                        newsletterName: "JawadTechX",
+                        serverMessageId: 143
+                    }
+                }
+            },
+            { quoted: mek }
+        );
+
+    } catch (e) {
+        console.log(e);
+        reply(`${e}`);
+    }
+});
+
+cmd({
     pattern: "reactions",
     desc: "Shows the reaction commands",
     category: "menu",
