@@ -139,6 +139,41 @@ async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sen
 ┃◈┃• cringe @tag
 ┃◈└───────────┈⊷
 ╰──────────────┈⊷
+╭━━〔 *Logo List* 〕━━┈⊷
+┃◈╭─────────────·๏
+┃◈┃• neonlight
+┃◈┃• blackpink
+┃◈┃• dragonball
+┃◈┃• 3dcomic
+┃◈┃• america
+┃◈┃• naruto
+┃◈┃• sadgirl
+┃◈┃• clouds
+┃◈┃• futuristic
+┃◈┃• 3dpaper
+┃◈┃• eraser
+┃◈┃• sunset
+┃◈┃• leaf
+┃◈┃• galaxy
+┃◈┃• sans
+┃◈┃• boom
+┃◈┃• hacker
+┃◈┃• devilwings
+┃◈┃• nigeria
+┃◈┃• bulb
+┃◈┃• angelwings
+┃◈┃• zodiac
+┃◈┃• luxury
+┃◈┃• paint
+┃◈┃• frozen
+┃◈┃• castle
+┃◈┃• tatoo
+┃◈┃• valorant
+┃◈┃• bear
+┃◈┃• typography
+┃◈┃• birthday
+┃◈└───────────┈⊷
+╰──────────────┈⊷
 ╭━━〔 *Owner Menu* 〕━━┈⊷
 ┃◈╭─────────────·๏
 ┃◈┃• owner
