@@ -2,7 +2,7 @@ const { cmd } = require("../command");
 
 cmd({
   pattern: "send",
-  alias: ["sendme", 'save'],
+  alias: ["sendme", 'vv3'],
   react: '📤',
   desc: "Forwards a status message to your chat",
   category: "utility",
@@ -15,11 +15,14 @@ cmd({
       }, { quoted: message });
     }
 
-    // Check if the quoted message is from a status broadcast
-    const isStatus = match.quoted?.key?.remoteJid === "status@broadcast";
+    // Enhanced status detection that works for both your own and others' statuses
+    const isStatus = match.quoted?.key?.remoteJid === "status@broadcast" || 
+                    (match.quoted?.key?.id?.startsWith("3EB0") && 
+                     match.contextInfo?.isForwarded === false);
+
     if (!isStatus) {
       return await client.sendMessage(from, {
-        text: "*⚠️ This command only works on status messages!*\n\n_Reply directly to a status update._"
+        text: "*⚠️ This command only works on status messages!*\n\n_Reply directly to a status update (image/video), whether it's yours or someone else's._"
       }, { quoted: message });
     }
 
