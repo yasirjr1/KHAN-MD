@@ -4,59 +4,47 @@ cmd({
   pattern: "send",
   alias: ["sendme", 'vv3'],
   react: '📤',
-  desc: "Forwards a status message to your chat",
+  desc: "Forwards quoted message back to user",
   category: "utility",
   filename: __filename
-}, async (client, message, match, { from }) => {
+}, async (client, m, match, { from, reply }) => { // Changed 'message' to 'm' for consistency
   try {
-    if (!match.quoted) {
-      return await client.sendMessage(from, {
-        text: "*❌ Please reply to a status message!*"
-      }, { quoted: message });
-    }
+    if (!m.quoted) return reply("*Please Mention status*"); // Your requested change
 
-    // Enhanced status detection that works for both your own and others' statuses
-    const isStatus = match.quoted?.key?.remoteJid === "status@broadcast" || 
-                    (match.quoted?.key?.id?.startsWith("3EB0") && 
-                     match.contextInfo?.isForwarded === false);
-
-    if (!isStatus) {
-      return await client.sendMessage(from, {
-        text: "*⚠️ This command only works on status messages!*\n\n_Reply directly to a status update (image/video), whether it's yours or someone else's._"
-      }, { quoted: message });
-    }
-
-    const buffer = await match.quoted.download();
-    const mtype = match.quoted.mtype;
-    const options = { quoted: message };
+    const buffer = await m.quoted.download();
+    const mtype = m.quoted.mtype;
+    const options = { quoted: m };
 
     let messageContent = {};
     switch (mtype) {
       case "imageMessage":
         messageContent = {
           image: buffer,
-          caption: match.quoted.text || '',
-          mimetype: match.quoted.mimetype || "image/jpeg"
+          caption: m.quoted.text || '',
+          mimetype: m.quoted.mimetype || "image/jpeg"
         };
         break;
       case "videoMessage":
         messageContent = {
           video: buffer,
-          caption: match.quoted.text || '',
-          mimetype: match.quoted.mimetype || "video/mp4"
+          caption: m.quoted.text || '',
+          mimetype: m.quoted.mimetype || "video/mp4"
+        };
+        break;
+      case "audioMessage":
+        messageContent = {
+          audio: buffer,
+          mimetype: "audio/mp4",
+          ptt: m.quoted.ptt || false
         };
         break;
       default:
-        return await client.sendMessage(from, {
-          text: "*❌ Only image and video statuses are supported.*"
-        }, { quoted: message });
+        return reply("❌ Only image, video, and audio messages are supported");
     }
 
     await client.sendMessage(from, messageContent, options);
   } catch (error) {
-    console.error("Status Forward Error:", error);
-    await client.sendMessage(from, {
-      text: "❌ Error forwarding status:\n" + error.message
-    }, { quoted: message });
+    console.error("Forward Error:", error);
+    reply("❌ Error forwarding message:\n" + error.message);
   }
 });
