@@ -4,14 +4,21 @@ cmd({
   pattern: "send",
   alias: ["sendme", 'save'],
   react: '📤',
-  desc: "Forwards quoted message back to user",
+  desc: "Forwards a quoted status message back to you",
   category: "utility",
   filename: __filename
 }, async (client, message, match, { from }) => {
   try {
     if (!match.quoted) {
       return await client.sendMessage(from, {
-        text: "*🍁 Please reply to a message!*"
+        text: "*❌ Please reply to a status message!*"
+      }, { quoted: message });
+    }
+
+    // Check if the quoted message is from a status
+    if (!match.quoted?.isStatus) {
+      return await client.sendMessage(from, {
+        text: "*⚠️ This command only works on status messages!*"
       }, { quoted: message });
     }
 
@@ -35,24 +42,17 @@ cmd({
           mimetype: match.quoted.mimetype || "video/mp4"
         };
         break;
-      case "audioMessage":
-        messageContent = {
-          audio: buffer,
-          mimetype: "audio/mp4",
-          ptt: match.quoted.ptt || false
-        };
-        break;
       default:
         return await client.sendMessage(from, {
-          text: "❌ Only image, video, and audio messages are supported"
+          text: "*❌ Only image and video statuses are supported.*"
         }, { quoted: message });
     }
 
     await client.sendMessage(from, messageContent, options);
   } catch (error) {
-    console.error("Forward Error:", error);
+    console.error("Status Forward Error:", error);
     await client.sendMessage(from, {
-      text: "❌ Error forwarding message:\n" + error.message
+      text: "❌ Error forwarding status:\n" + error.message
     }, { quoted: message });
   }
 });
