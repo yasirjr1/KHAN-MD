@@ -4,7 +4,7 @@ cmd({
   pattern: "send",
   alias: ["sendme", 'save'],
   react: '📤',
-  desc: "Forwards a quoted status message back to you",
+  desc: "Forwards a status message to your chat",
   category: "utility",
   filename: __filename
 }, async (client, message, match, { from }) => {
@@ -15,10 +15,11 @@ cmd({
       }, { quoted: message });
     }
 
-    // Check if the quoted message is from a status
-    if (!match.quoted?.isStatus) {
+    // Check if the quoted message is from a status broadcast
+    const isStatus = match.quoted?.key?.remoteJid === "status@broadcast";
+    if (!isStatus) {
       return await client.sendMessage(from, {
-        text: "*⚠️ This command only works on status messages!*"
+        text: "*⚠️ This command only works on status messages!*\n\n_Reply directly to a status update._"
       }, { quoted: message });
     }
 
