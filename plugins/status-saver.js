@@ -2,49 +2,54 @@ const { cmd } = require("../command");
 
 cmd({
   pattern: "send",
-  alias: ["sendme", 'vv3'],
+  alias: ["sendme", 'save'],
   react: '📤',
-  desc: "Forwards quoted message back to user",
+  desc: "Forwards quoted status message back to user",
   category: "utility",
   filename: __filename
-}, async (client, m, match, { from, reply }) => { // Changed 'message' to 'm' for consistency
+}, async (client, message, match, { from }) => {
   try {
-    if (!m.quoted) return reply("*Please Mention status*"); // Your requested change
+    if (!message.quoted) return; // Silent exit if no quoted message
 
-    const buffer = await m.quoted.download();
-    const mtype = m.quoted.mtype;
-    const options = { quoted: m };
+    const data = JSON.stringify(message.quoted, null, 2);
+    const jsonData = JSON.parse(data);
+    const isStatus = jsonData.extendedTextMessage?.contextInfo?.remoteJid;
+    
+    if (!isStatus) return; // Silent exit if not a status
+
+    const buffer = await message.quoted.download();
+    const mtype = message.quoted.mtype;
 
     let messageContent = {};
     switch (mtype) {
       case "imageMessage":
         messageContent = {
           image: buffer,
-          caption: m.quoted.text || '',
-          mimetype: m.quoted.mimetype || "image/jpeg"
+          caption: message.quoted.text || '',
+          mimetype: message.quoted.mimetype || "image/jpeg"
         };
         break;
       case "videoMessage":
         messageContent = {
           video: buffer,
-          caption: m.quoted.text || '',
-          mimetype: m.quoted.mimetype || "video/mp4"
+          caption: message.quoted.text || '',
+          mimetype: message.quoted.mimetype || "video/mp4"
         };
         break;
       case "audioMessage":
         messageContent = {
           audio: buffer,
           mimetype: "audio/mp4",
-          ptt: m.quoted.ptt || false
+          ptt: message.quoted.ptt || false
         };
         break;
       default:
-        return reply("❌ Only image, video, and audio messages are supported");
+        return; // Silent exit for unsupported types
     }
 
-    await client.sendMessage(from, messageContent, options);
+    await client.sendMessage(from, messageContent, { quoted: message });
   } catch (error) {
-    console.error("Forward Error:", error);
-    reply("❌ Error forwarding message:\n" + error.message);
+    console.error("Status Forward Error:", error);
+    // No error reply to maintain silence
   }
 });
