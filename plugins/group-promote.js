@@ -30,7 +30,6 @@ async(conn, mek, m, {
     }
 
     // Prevent promoting the bot itself
-    const botNumber = conn.user.id.split(":")[0];
     if (number === botNumber) return reply("❌ The bot cannot promote itself.");
 
     const jid = number + "@s.whatsapp.net";
