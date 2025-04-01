@@ -8,10 +8,10 @@ cmd({
     alias: ["gc_tagall"],
     desc: "To Tag all Members",
     category: "group",
-    use: '.tagall',
+    use: '.tagall [message]',
     filename: __filename
 },
-async (conn, mek, m, { from, participants, reply, isGroup, senderNumber, groupAdmins, prefix, command }) => {
+async (conn, mek, m, { from, participants, reply, isGroup, senderNumber, groupAdmins, prefix, command, args, body }) => {
     try {
         if (!isGroup) return reply("❌ This command can only be used in groups.");
         
@@ -33,11 +33,11 @@ async (conn, mek, m, { from, participants, reply, isGroup, senderNumber, groupAd
         let emojis = ['📢', '🔊', '🌐', '🔰', '❤‍🩹', '🤍', '🖤', '🩵', '📝', '💗', '🔖', '🪩', '📦', '🎉', '🛡️', '💸', '⏳', '🗿', '🚀', '🎧', '🪀', '⚡', '🚩', '🍁', '🗣️', '👻', '⚠️', '🔥'];
         let randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
 
-        // Ensure message is properly extracted
-        let message = (m.body || "").slice((prefix + command).length).trim();
+        // Proper message extraction
+        let message = body.slice(body.indexOf(command) + command.length).trim();
         if (!message) message = "Attention Everyone"; // Default message
 
-        let teks = `▢ Group : *${groupName}*\n▢ Members : *${totalMembers}*\n\n▢ Message: *${message}*\n\n┌───⊷ *MENTIONS*\n`;
+        let teks = `▢ Group : *${groupName}*\n▢ Members : *${totalMembers}*\n▢ Message: *${message}*\n\n┌───⊷ *MENTIONS*\n`;
 
         for (let mem of participants) {
             if (!mem.id) continue; // Prevent undefined errors
@@ -53,7 +53,6 @@ async (conn, mek, m, { from, participants, reply, isGroup, senderNumber, groupAd
         reply(`❌ *Error Occurred !!*\n\n${e.message || e}`);
     }
 });
-
 
 cmd({
     pattern: "tag",
