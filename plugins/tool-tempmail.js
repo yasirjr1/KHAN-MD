@@ -14,13 +14,23 @@ async (conn, mek, m, { from, reply, prefix }) => {
         const response = await axios.get('https://apis.davidcyriltech.my.id/temp-mail');
         const { email, session_id, expires_at } = response.data;
 
-        const message = `📧 *Temporary Email Generated*\n\n` +
-                       `✉️ *Email Address:* ${email}\n` +
-                       `🔑 *Session ID:* ${session_id}\n` +
-                       `⏳ *Expires At:* ${new Date(expires_at).toLocaleString()}\n\n` +
-                       `Use *${prefix}checkmail ${session_id}* to check your inbox`;
+        // First message with email info
+        await reply(`📧 *Temporary Email Generated*\n\n` +
+                   `✉️ *Email Address:* ${email}\n` +
+                   `⏳ *Expires At:* ${new Date(expires_at).toLocaleString()}`);
 
-        await reply(message);
+        // Second message with session ID (important info)
+        await conn.sendMessage(
+            from,
+            { 
+                text: `🔑 Mail ID: ${session_id}`,
+                contextInfo: {
+                    forwardingScore: 999,
+                    isForwarded: true
+                }
+            },
+            { quoted: mek }
+        );
 
     } catch (e) {
         console.error('TempMail error:', e);
