@@ -30,7 +30,6 @@ async(conn, mek, m, {
     }
 
     // Prevent demoting the bot itself
-    const botNumber = conn.user.id.split(":")[0];
     if (number === botNumber) return reply("❌ The bot cannot demote itself.");
 
     const jid = number + "@s.whatsapp.net";
