@@ -4,52 +4,43 @@ cmd({
     pattern: "add",
     alias: ["a", "invite"],
     desc: "Adds a member to the group",
-    category: "owner",
+    category: "admin",
     react: "➕",
     filename: __filename
 },
-async (conn, m, { reply, q, react, isGroup }) => {
+async (conn, mek, m, {
+    from, q, isGroup, isBotAdmins, reply, quoted, senderNumber
+}) => {
     // Check if the command is used in a group
-    if (!isGroup) {
-        await react("❌");
-        return reply("❌ This command can only be used in groups.");
-    }
+    if (!isGroup) return reply("❌ This command can only be used in groups.");
 
-    // Get the bot owner's number dynamically
+    // Get the bot owner's number dynamically from conn.user.id
     const botOwner = conn.user.id.split(":")[0];
-    
-    // Check if the user is the bot owner
-    if (m.sender.split("@")[0] !== botOwner) {
-        await react("❌");
+    if (senderNumber !== botOwner) {
         return reply("❌ Only the bot owner can use this command.");
     }
+
+    // Check if the bot is an admin
+    if (!isBotAdmins) return reply("❌ I need to be an admin to use this command.");
 
     let number;
     if (m.quoted) {
         number = m.quoted.sender.split("@")[0]; // If replying to a message, get the sender's number
-    } else if (q && q.match(/^\d{10,15}$/)) {
-        number = q; // If manually typing a number
+    } else if (q && q.includes("@")) {
+        number = q.replace(/[@\s]/g, ''); // If manually typing a number with '@'
+    } else if (q && /^\d+$/.test(q)) {
+        number = q; // If directly typing a number
     } else {
-        await react("❌");
-        return reply("❌ Please reply to a message or provide a valid number.");
+        return reply("❌ Please reply to a message, mention a user, or provide a number to add.");
     }
 
-    // Prevent adding the bot itself
-    const botNumber = conn.user.id.split(":")[0];
-    if (number === botNumber) {
-        await react("❌");
-        return reply("❌ The bot cannot add itself.");
-    }
-
-    const userToAdd = `${number}@s.whatsapp.net`;
+    const jid = number + "@s.whatsapp.net";
 
     try {
-        await conn.groupParticipantsUpdate(m.chat, [userToAdd], "add");
-        await react("✅");
-        reply(`✅ Successfully added @${number} to the group.`, { mentions: [userToAdd] });
+        await conn.groupParticipantsUpdate(from, [jid], "add");
+        reply(`✅ Successfully added @${number}`, { mentions: [jid] });
     } catch (error) {
         console.error("Add command error:", error);
-        await react("❌");
-        reply("❌ Failed to add the member. Make sure the number is valid and not restricted from being added.");
+        reply("❌ Failed to add the member.");
     }
 });
