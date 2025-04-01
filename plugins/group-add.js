@@ -1,47 +1,48 @@
-const config = require('../config')
-const { cmd, commands } = require('../command')
-const { getBuffer, getGroupAdmins, getRandom, h2k, isUrl, Json, runtime, sleep, fetchJson} = require('../lib/functions')
+const { cmd } = require('../command');
 
 cmd({
     pattern: "add",
-    alias: ["aja"],
+    desc: "Adds a member to the group",
+    category: "owner",
     react: "➕",
-    desc: "Adds a user to the group.",
-    category: "group",
-    filename: __filename,
-    use: '<number>',
-},           
-async (conn, mek, m, { from, args, q, isGroup, senderNumber, botNumber, reply }) => {
+    filename: __filename
+},
+async (conn, m, { reply, q, react, isGroup }) => {
+    // Check if the command is used in a group
+    if (!isGroup) {
+        await react("❌");
+        return reply("❌ This command can only be used in groups.");
+    }
+
+    // Get the bot owner's number dynamically
+    const botOwner = conn.user.id.split(":")[0];
+    const senderNumber = m.sender.split("@")[0];
+
+    // Restrict command usage to the bot owner only
+    if (senderNumber !== botOwner) {
+        await react("❌");
+        return reply("❌ Only the bot owner can use this command.");
+    }
+
+    let number;
+    if (m.quoted) {
+        number = m.quoted.sender.split("@")[0]; // If replying to a message, get the sender's number
+    } else if (q && q.includes("@")) {
+        number = q.replace(/[@\s]/g, ''); // If manually typing a number
+    } else {
+        await react("❌");
+        return reply("❌ Please reply to a message or provide a number to add.");
+    }
+
+    const jid = number + "@s.whatsapp.net";
+
     try {
-        if (!isGroup) return reply("❌ This command can only be used in groups.");
-
-        // Extract bot owner's number
-        const botOwner = conn.user.id.split(":")[0];
-
-        // Restrict command usage to the bot owner only
-        if (senderNumber !== botOwner) {
-            return reply("❌ Only the bot owner can use this command.");
-        }
-
-        // Ensure the bot is an admin
-        if (!isBotAdmins) return reply("❌ I need to be an admin to add users.");
-
-        // Validate user input
-        if (!q || isNaN(q)) return reply("❌ Please provide a valid phone number to add.");
-        
-        const userToAdd = `${q}@s.whatsapp.net`;
-
-        // Attempt to add the user to the group
-        let response = await conn.groupParticipantsUpdate(from, [userToAdd], "add");
-
-        // Check if the user was successfully added
-        if (response[0].status === 200) {
-            reply(`✅ User *${q}* has been added to the group.`);
-        } else {
-            reply("❌ Failed to add user. Make sure the number is correct and they are not already in the group.");
-        }
-    } catch (e) {
-        console.error("Error adding user:", e);
-        reply("❌ An error occurred while adding the user. Please try again.");
+        await conn.groupParticipantsUpdate(m.chat, [jid], "add");
+        await react("✅");
+        reply(`Successfully added @${number}`, { mentions: [jid] });
+    } catch (error) {
+        console.error("Add command error:", error);
+        await react("❌");
+        reply("❌ Failed to add the member.");
     }
 });
