@@ -14,19 +14,51 @@ async (conn, mek, m, { from, reply, prefix }) => {
         const response = await axios.get('https://apis.davidcyriltech.my.id/temp-mail');
         const { email, session_id, expires_at } = response.data;
 
-        // First message with email info
-        await reply(`📧 *Temporary Email Generated*\n\n` +
-                   `✉️ *Email Address:* ${email}\n` +
-                   `⏳ *Expires At:* ${new Date(expires_at).toLocaleString()}`);
+        // Format the expiration time and date
+        const expiresDate = new Date(expires_at);
+        const timeString = expiresDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        const dateString = expiresDate.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
 
-        // Second message with session ID (important info)
+        // Create the complete message
+        const message = `
+📧 *TEMPORARY EMAIL GENERATED*
+
+✉️ *Email Address:*
+${email}
+
+⏳ *Expires:*
+${timeString} • ${dateString}
+
+🔑 *Session ID:*
+\`\`\`${session_id}\`\`\`
+
+📥 *Check Inbox:*
+.inbox ${session_id}
+
+_Email will expire after 24 hours_
+`;
+
         await conn.sendMessage(
             from,
             { 
-                text: `🔑 Mail ID: ${session_id}`,
+                text: message,
                 contextInfo: {
                     forwardingScore: 999,
-                    isForwarded: true
+                    isForwarded: true,
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: '120363363023106228@newsletter',
+                        newsletterName: 'TempMail Service',
+                        serverMessageId: 101
+                    }
                 }
             },
             { quoted: mek }
@@ -34,10 +66,9 @@ async (conn, mek, m, { from, reply, prefix }) => {
 
     } catch (e) {
         console.error('TempMail error:', e);
-        reply(`❌ Error generating email: ${e.message}`);
+        reply(`❌ Error: ${e.message}`);
     }
 });
-
 cmd({
     pattern: "checkmail",
     alias: ["inbox", "tmail", "mailinbox"],
