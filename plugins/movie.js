@@ -8,10 +8,14 @@ cmd({
     react: "🎬",
     filename: __filename
 },
-async (conn, mek, m, { from, reply, sender }) => {
+async (conn, mek, m, { from, reply, sender, args }) => {
     try {
-        const movieName = m.args.join(' ');
-        if (!movieName) return reply("📽️ Please provide a movie name.\nExample: .movie Iron Man");
+        // Properly extract the movie name from arguments
+        const movieName = args.length > 0 ? args.join(' ') : m.text.replace(/^[\.\#\$\!]?movie\s?/i, '').trim();
+        
+        if (!movieName) {
+            return reply("📽️ Please provide the name of the movie.\nExample: .movie Iron Man");
+        }
 
         const apiUrl = `https://apis.davidcyriltech.my.id/imdb?query=${encodeURIComponent(movieName)}`;
         const response = await axios.get(apiUrl);
@@ -45,7 +49,7 @@ async (conn, mek, m, { from, reply, sender }) => {
 [View on IMDb](${movie.imdbUrl})
 `;
 
-        // Send message with exact requested format
+        // Send message with the requested format
         await conn.sendMessage(
             from,
             {
