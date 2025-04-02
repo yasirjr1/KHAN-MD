@@ -3,73 +3,106 @@ const path = require('path');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const { spawn } = require('child_process');
 
-async function ffmpeg(buffer, args = [], ext = '', ext2 = '') {
-  const tmp = path.join(__dirname, '../src', `${Date.now()}.${ext}`);
-  const out = `${tmp}.${ext2}`;
-  
-  try {
-    // Write input file
-    await fs.promises.writeFile(tmp, buffer);
-    
-    return new Promise((resolve, reject) => {
-      const ffmpegProcess = spawn(ffmpegPath, [
-        '-y',
-        '-i', tmp,
-        ...args,
-        out
-      ]);
-      
-      let stderr = '';
-      
-      ffmpegProcess.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-      
-      ffmpegProcess.on('error', (err) => {
-        reject(new Error(`FFmpeg process error: ${err.message}`));
-      });
-      
-      ffmpegProcess.on('close', async (code) => {
-        try {
-          await fs.promises.unlink(tmp); // Cleanup input file
-          
-          if (code !== 0) {
-            return reject(new Error(`FFmpeg process exited with code ${code}. Error: ${stderr}`));
-          }
-          
-          const outputData = await fs.promises.readFile(out);
-          await fs.promises.unlink(out); // Cleanup output file
-          resolve(outputData);
-        } catch (e) {
-          reject(new Error(`File operation error: ${e.message}`));
+class Converter {
+    constructor() {
+        this.tempDir = path.join(__dirname, '../temp');
+        this.ensureTempDir();
+    }
+
+    ensureTempDir() {
+        if (!fs.existsSync(this.tempDir)) {
+            fs.mkdirSync(this.tempDir, { recursive: true });
         }
-      });
-    });
-  } catch (err) {
-    // Cleanup if error occurs before spawn
-    try { await fs.promises.unlink(tmp); } catch {}
-    throw new Error(`Initial setup error: ${err.message}`);
-  }
+    }
+
+    async cleanFiles(...files) {
+        for (const file of files) {
+            if (file && fs.existsSync(file)) {
+                await fs.promises.unlink(file).catch(console.error);
+            }
+        }
+    }
+
+    async ffmpeg(buffer, args = [], ext = '', ext2 = '') {
+        const timestamp = Date.now();
+        const tmp = path.join(this.tempDir, `${timestamp}.${ext}`);
+        const out = path.join(this.tempDir, `${timestamp}.${ext2}`);
+
+        try {
+            await fs.promises.writeFile(tmp, buffer);
+            
+            return new Promise((resolve, reject) => {
+                const ffmpegProcess = spawn(ffmpegPath, [
+                    '-y',
+                    '-i', tmp,
+                    ...args,
+                    out
+                ], {
+                    stdio: 'pipe',
+                    timeout: 60000
+                });
+
+                let stderr = '';
+                const timer = setTimeout(() => {
+                    ffmpegProcess.kill();
+                    reject(new Error('Conversion timed out (60s)'));
+                }, 60000);
+
+                ffmpegProcess.stderr.on('data', (data) => {
+                    stderr += data.toString();
+                });
+
+                ffmpegProcess.on('error', (err) => {
+                    clearTimeout(timer);
+                    reject(err);
+                });
+
+                ffmpegProcess.on('close', async (code) => {
+                    clearTimeout(timer);
+                    try {
+                        await this.cleanFiles(tmp);
+                        
+                        if (code !== 0) {
+                            throw new Error(`FFmpeg failed (code ${code})\n${stderr}`);
+                        }
+
+                        if (!fs.existsSync(out)) {
+                            throw new Error('Output file not created');
+                        }
+
+                        const result = await fs.promises.readFile(out);
+                        await this.cleanFiles(out);
+                        resolve(result);
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+        } catch (err) {
+            await this.cleanFiles(tmp, out);
+            throw err;
+        }
+    }
+
+    async toAudio(buffer, ext) {
+        return this.ffmpeg(buffer, [
+            '-vn',
+            '-ac', '2',
+            '-b:a', '128k',
+            '-ar', '44100',
+            '-f', 'mp3'
+        ], ext, 'mp3');
+    }
+
+    async toPTT(buffer, ext) {
+        return this.ffmpeg(buffer, [
+            '-vn',
+            '-c:a', 'libopus',
+            '-b:a', '128k',
+            '-vbr', 'on',
+            '-compression_level', '10'
+        ], ext, 'opus');
+    }
 }
 
-function toAudio(buffer, ext) {
-  return ffmpeg(buffer, [
-    '-vn',
-    '-ac', '2',
-    '-b:a', '128k',
-    '-ar', '44100',
-    '-f', 'mp3'
-  ], ext, 'mp3');
-}
-
-function toPTT(buffer, ext) {
-  return ffmpeg(buffer, [
-    '-vn',
-    '-c:a', 'libopus',
-    '-b:a', '128k',
-    '-vbr', 'on',
-    '-compression_level', '10'
-  ], ext, 'opus');
-}
-
-module.exports = { toAudio, toPTT, ffmpeg };
+module.exports = new Converter();
