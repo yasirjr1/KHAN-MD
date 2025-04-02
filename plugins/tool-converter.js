@@ -3,7 +3,7 @@ const { cmd } = require('../command');
 
 cmd({
     pattern: 'tomp3',
-    desc: 'Convert media to MP3 audio',
+    desc: 'Convert media to audio',
     category: 'audio',
     react: '🎵',
     filename: __filename
@@ -11,7 +11,7 @@ cmd({
     try {
         if (!match.quoted) {
             return await client.sendMessage(from, {
-                text: "*🔊 Reply to a video/audio message to convert to MP3*"
+                text: "*🔊 Reply to a video/audio message to convert*"
             }, { quoted: message });
         }
 
@@ -29,7 +29,7 @@ cmd({
         }
 
         const processingMsg = await client.sendMessage(from, {
-            text: "🔄 Converting to MP3..."
+            text: "🔄 Converting to audio..."
         }, { quoted: message });
 
         try {
@@ -42,7 +42,7 @@ cmd({
             const audio = await converter.toAudio(buffer, ext);
 
             await client.sendMessage(from, {
-                document: audio,
+                audio: audio,
                 mimetype: 'audio/mpeg',
                 fileName: 'converted.mp3'
             }, { quoted: message });
@@ -73,7 +73,7 @@ cmd({
     try {
         if (!match.quoted) {
             return await client.sendMessage(from, {
-                text: "*🗣️ Reply to a video/audio message to convert to PTT*"
+                text: "*🗣️ Reply to a video/audio message to convert to voice*"
             }, { quoted: message });
         }
 
@@ -86,7 +86,7 @@ cmd({
 
         if (match.quoted.seconds > 60) {
             return await client.sendMessage(from, {
-                text: "⏱️ Media too long for PTT (max 1 minute)"
+                text: "⏱️ Media too long for voice (max 1 minute)"
             }, { quoted: message });
         }
 
@@ -110,17 +110,17 @@ cmd({
             }, { quoted: message });
 
         } catch (e) {
-            console.error('Conversion error:', e);
+            console.error('PTT Conversion error:', e);
             await client.sendMessage(from, {
-                text: `❌ Failed to convert:\n${e.message}`
+                text: `❌ Failed to create voice message:\n${e.message}`
             }, { quoted: message });
         } finally {
             await processingMsg.delete().catch(() => {});
         }
     } catch (e) {
-        console.error('Command error:', e);
+        console.error('PTT Command error:', e);
         await client.sendMessage(from, {
-            text: "⚠️ An unexpected error occurred"
+            text: "⚠️ An error occurred while processing voice message"
         }, { quoted: message });
     }
 });
