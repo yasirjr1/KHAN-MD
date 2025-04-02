@@ -3,7 +3,7 @@ const path = require('path');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const { spawn } = require('child_process');
 
-class Converter {
+class AudioConverter {
     constructor() {
         this.tempDir = path.join(__dirname, '../temp');
         this.ensureTempDir();
@@ -15,77 +15,60 @@ class Converter {
         }
     }
 
-    async cleanFiles(...files) {
-        for (const file of files) {
-            if (file && fs.existsSync(file)) {
-                await fs.promises.unlink(file).catch(console.error);
-            }
+    async cleanFile(file) {
+        if (file && fs.existsSync(file)) {
+            await fs.promises.unlink(file).catch(() => {});
         }
     }
 
-    async ffmpeg(buffer, args = [], ext = '', ext2 = '') {
-        const timestamp = Date.now();
-        const tmp = path.join(this.tempDir, `${timestamp}.${ext}`);
-        const out = path.join(this.tempDir, `${timestamp}.${ext2}`);
+    async convert(buffer, args, ext, ext2) {
+        const inputPath = path.join(this.tempDir, `${Date.now()}.${ext}`);
+        const outputPath = path.join(this.tempDir, `${Date.now()}.${ext2}`);
 
         try {
-            await fs.promises.writeFile(tmp, buffer);
+            await fs.promises.writeFile(inputPath, buffer);
             
             return new Promise((resolve, reject) => {
-                const ffmpegProcess = spawn(ffmpegPath, [
+                const ffmpeg = spawn(ffmpegPath, [
                     '-y',
-                    '-i', tmp,
+                    '-i', inputPath,
                     ...args,
-                    out
-                ], {
-                    stdio: 'pipe',
-                    timeout: 60000
-                });
+                    outputPath
+                ], { timeout: 30000 });
 
-                let stderr = '';
-                const timer = setTimeout(() => {
-                    ffmpegProcess.kill();
-                    reject(new Error('Conversion timed out (60s)'));
-                }, 60000);
+                let errorOutput = '';
+                ffmpeg.stderr.on('data', (data) => errorOutput += data.toString());
 
-                ffmpegProcess.stderr.on('data', (data) => {
-                    stderr += data.toString();
-                });
-
-                ffmpegProcess.on('error', (err) => {
-                    clearTimeout(timer);
-                    reject(err);
-                });
-
-                ffmpegProcess.on('close', async (code) => {
-                    clearTimeout(timer);
-                    try {
-                        await this.cleanFiles(tmp);
-                        
-                        if (code !== 0) {
-                            throw new Error(`FFmpeg failed (code ${code})\n${stderr}`);
-                        }
-
-                        if (!fs.existsSync(out)) {
-                            throw new Error('Output file not created');
-                        }
-
-                        const result = await fs.promises.readFile(out);
-                        await this.cleanFiles(out);
-                        resolve(result);
-                    } catch (e) {
-                        reject(e);
+                ffmpeg.on('close', async (code) => {
+                    await this.cleanFile(inputPath);
+                    
+                    if (code !== 0) {
+                        await this.cleanFile(outputPath);
+                        return reject(new Error(`Conversion failed with code ${code}`));
                     }
+
+                    try {
+                        const result = await fs.promises.readFile(outputPath);
+                        await this.cleanFile(outputPath);
+                        resolve(result);
+                    } catch (readError) {
+                        reject(readError);
+                    }
+                });
+
+                ffmpeg.on('error', (err) => {
+                    reject(err);
                 });
             });
         } catch (err) {
-            await this.cleanFiles(tmp, out);
+            await this.cleanFile(inputPath);
+            await this.cleanFile(outputPath);
             throw err;
         }
     }
 
-    async toAudio(buffer, ext) {
-        return this.ffmpeg(buffer, [
+    toAudio(buffer, ext) {
+        return this.convert(buffer, [
             '-vn',
             '-ac', '2',
             '-b:a', '128k',
@@ -94,8 +77,8 @@ class Converter {
         ], ext, 'mp3');
     }
 
-    async toPTT(buffer, ext) {
-        return this.ffmpeg(buffer, [
+    toPTT(buffer, ext) {
+        return this.convert(buffer, [
             '-vn',
             '-c:a', 'libopus',
             '-b:a', '128k',
@@ -105,4 +88,4 @@ class Converter {
     }
 }
 
-module.exports = new Converter();
+module.exports = new AudioConverter();
