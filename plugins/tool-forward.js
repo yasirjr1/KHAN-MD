@@ -1,10 +1,13 @@
+// Jawad TechX - KHAN MD 
+// Dont Remove Credit From File 
+
 const { cmd } = require("../command");
 
 // Safety Configuration
 const SAFETY = {
   MAX_JIDS: 20,
-  BASE_DELAY: 3000,
-  EXTRA_DELAY: 8000,
+  BASE_DELAY: 2000,  // jawad on top 🔝
+  EXTRA_DELAY: 4000,  // huh don't copy mine file 
 };
 
 cmd({
@@ -56,38 +59,68 @@ cmd({
       );
     }
 
-    // ===== [YOUR ORIGINAL MEDIA HANDLING] ===== //
-    const buffer = await message.quoted.download();
+    // ===== [ENHANCED MEDIA HANDLING - ALL TYPES] ===== //
+    let messageContent = {};
     const mtype = message.quoted.mtype;
     
-    let messageContent = {};
-    switch (mtype) {
-      case "imageMessage":
-        messageContent = {
-          image: buffer,
-          caption: message.quoted.text || '',
-          mimetype: message.quoted.mimetype || "image/jpeg"
-        };
-        break;
-      case "videoMessage":
-        messageContent = {
-          video: buffer,
-          caption: message.quoted.text || '',
-          mimetype: message.quoted.mimetype || "video/mp4"
-        };
-        break;
-      case "audioMessage":
-        messageContent = {
-          audio: buffer,
-          mimetype: "audio/mp4",
-          ptt: message.quoted.ptt || false
-        };
-        break;
-      default:
-        return await message.reply("❌ Only image, video, and audio messages are supported");
+    // For media messages (image, video, audio, sticker, document)
+    if (["imageMessage", "videoMessage", "audioMessage", "stickerMessage", "documentMessage"].includes(mtype)) {
+      const buffer = await message.quoted.download();
+      
+      switch (mtype) {
+        case "imageMessage":
+          messageContent = {
+            image: buffer,
+            caption: message.quoted.text || '',
+            mimetype: message.quoted.mimetype || "image/jpeg"
+          };
+          break;
+        case "videoMessage":
+          messageContent = {
+            video: buffer,
+            caption: message.quoted.text || '',
+            mimetype: message.quoted.mimetype || "video/mp4"
+          };
+          break;
+        case "audioMessage":
+          messageContent = {
+            audio: buffer,
+            mimetype: message.quoted.mimetype || "audio/mp4",
+            ptt: message.quoted.ptt || false
+          };
+          break;
+        case "stickerMessage":
+          messageContent = {
+            sticker: buffer,
+            mimetype: message.quoted.mimetype || "image/webp"
+          };
+          break;
+        case "documentMessage":
+          messageContent = {
+            document: buffer,
+            mimetype: message.quoted.mimetype || "application/octet-stream",
+            fileName: message.quoted.fileName || "document"
+          };
+          break;
+      }
+    } 
+    // For text messages
+    else if (mtype === "extendedTextMessage" || mtype === "conversation") {
+      messageContent = {
+        text: message.quoted.text
+      };
+    } 
+    // For other message types (forwarding as-is)
+    else {
+      try {
+        // Try to forward the message directly
+        messageContent = message.quoted;
+      } catch (e) {
+        return await message.reply("❌ Unsupported message type");
+      }
     }
 
-    // ===== [SAFE SENDING WITH PROGRESS] ===== //
+    // ===== [OPTIMIZED SENDING WITH PROGRESS] ===== //
     let successCount = 0;
     const failedJids = [];
     
@@ -96,13 +129,13 @@ cmd({
         await client.sendMessage(jid, messageContent);
         successCount++;
         
-        // Progress update
-        if ((index + 1) % 5 === 0) {
+        // Progress update (every 10 groups instead of 5)
+        if ((index + 1) % 10 === 0) {
           await message.reply(`🔄 Sent to ${index + 1}/${validJids.length} groups...`);
         }
         
-        // Apply delay
-        const delayTime = (index + 1) % 5 === 0 ? SAFETY.EXTRA_DELAY : SAFETY.BASE_DELAY;
+        // Apply reduced delay
+        const delayTime = (index + 1) % 10 === 0 ? SAFETY.EXTRA_DELAY : SAFETY.BASE_DELAY;
         await new Promise(resolve => setTimeout(resolve, delayTime));
         
       } catch (error) {
@@ -114,7 +147,7 @@ cmd({
     // ===== [COMPREHENSIVE REPORT] ===== //
     let report = `✅ *Forward Complete*\n\n` +
                  `📤 Success: ${successCount}/${validJids.length}\n` +
-                 `📦 Media Type: ${mtype.replace('Message', '')}\n`;
+                 `📦 Content Type: ${mtype.replace('Message', '') || 'text'}\n`;
     
     if (failedJids.length > 0) {
       report += `\n❌ Failed (${failedJids.length}): ${failedJids.slice(0, 5).join(', ')}`;
