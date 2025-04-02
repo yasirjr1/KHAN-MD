@@ -1,84 +1,126 @@
-const { toAudio, toPTT } = require('../data/converter');
+const converter = require('../data/converter');
 const { cmd } = require('../command');
 
 cmd({
     pattern: 'tomp3',
-    desc: 'Convert video to MP3 audio',
+    desc: 'Convert media to MP3 audio',
     category: 'audio',
     react: '🎵',
     filename: __filename
-}, async (conn, mek, m, { reply }) => {
+}, async (client, match, message, { from }) => {
     try {
-        if (!m.quoted || m.quoted.mtype !== 'videoMessage') {
-            return reply('Please reply to a video message to convert it to MP3');
+        if (!match.quoted) {
+            return await client.sendMessage(from, {
+                text: "*🔊 Reply to a video/audio message to convert to MP3*"
+            }, { quoted: message });
         }
-        
-        const processingMsg = await reply('⏳ Converting to MP3... Please wait');
-        
+
+        const mtype = match.quoted.mtype;
+        if (!['videoMessage', 'audioMessage'].includes(mtype)) {
+            return await client.sendMessage(from, {
+                text: "❌ Only video/audio messages can be converted"
+            }, { quoted: message });
+        }
+
+        if (match.quoted.seconds > 300) {
+            return await client.sendMessage(from, {
+                text: "⏱️ Media too long (max 5 minutes)"
+            }, { quoted: message });
+        }
+
+        const processingMsg = await client.sendMessage(from, {
+            text: "🔄 Converting to MP3..."
+        }, { quoted: message });
+
         try {
-            const media = await m.quoted.download();
-            const audio = await toAudio(media, 'mp4');
-            
-            await conn.sendMessage(
-                m.from, 
-                { 
-                    document: audio, 
-                    mimetype: 'audio/mpeg', 
-                    fileName: 'converted.mp3' 
-                }, 
-                { quoted: m }
-            );
-            
-            // Delete processing message after success
-            await processingMsg.delete();
+            const buffer = await match.quoted.download();
+            if (!buffer || buffer.length < 1024) {
+                throw new Error('Invalid media file');
+            }
+
+            const ext = mtype === 'videoMessage' ? 'mp4' : 'm4a';
+            const audio = await converter.toAudio(buffer, ext);
+
+            await client.sendMessage(from, {
+                document: audio,
+                mimetype: 'audio/mpeg',
+                fileName: 'converted.mp3'
+            }, { quoted: message });
+
         } catch (e) {
             console.error('Conversion error:', e);
-            await reply('❌ Failed to convert video to MP3. Please try again.');
-            await processingMsg.delete();
+            await client.sendMessage(from, {
+                text: `❌ Failed to convert:\n${e.message}`
+            }, { quoted: message });
+        } finally {
+            await processingMsg.delete().catch(() => {});
         }
     } catch (e) {
         console.error('Command error:', e);
-        reply('❌ An error occurred while processing your request');
+        await client.sendMessage(from, {
+            text: "⚠️ An unexpected error occurred"
+        }, { quoted: message });
     }
 });
 
 cmd({
     pattern: 'toptt',
-    desc: 'Convert video to PTT audio',
+    desc: 'Convert media to voice message',
     category: 'audio',
     react: '🎙️',
     filename: __filename
-}, async (conn, mek, m, { reply }) => {
+}, async (client, match, message, { from }) => {
     try {
-        if (!m.quoted || m.quoted.mtype !== 'videoMessage') {
-            return reply('Please reply to a video message to convert it to PTT');
+        if (!match.quoted) {
+            return await client.sendMessage(from, {
+                text: "*🗣️ Reply to a video/audio message to convert to PTT*"
+            }, { quoted: message });
         }
-        
-        const processingMsg = await reply('⏳ Converting to PTT... Please wait');
-        
+
+        const mtype = match.quoted.mtype;
+        if (!['videoMessage', 'audioMessage'].includes(mtype)) {
+            return await client.sendMessage(from, {
+                text: "❌ Only video/audio messages can be converted"
+            }, { quoted: message });
+        }
+
+        if (match.quoted.seconds > 60) {
+            return await client.sendMessage(from, {
+                text: "⏱️ Media too long for PTT (max 1 minute)"
+            }, { quoted: message });
+        }
+
+        const processingMsg = await client.sendMessage(from, {
+            text: "🔄 Converting to voice message..."
+        }, { quoted: message });
+
         try {
-            const media = await m.quoted.download();
-            const ptt = await toPTT(media, 'mp4');
-            
-            await conn.sendMessage(
-                m.from, 
-                { 
-                    audio: ptt, 
-                    mimetype: 'audio/ogg; codecs=opus', 
-                    ptt: true 
-                }, 
-                { quoted: m }
-            );
-            
-            // Delete processing message after success
-            await processingMsg.delete();
+            const buffer = await match.quoted.download();
+            if (!buffer || buffer.length < 1024) {
+                throw new Error('Invalid media file');
+            }
+
+            const ext = mtype === 'videoMessage' ? 'mp4' : 'm4a';
+            const ptt = await converter.toPTT(buffer, ext);
+
+            await client.sendMessage(from, {
+                audio: ptt,
+                mimetype: 'audio/ogg; codecs=opus',
+                ptt: true
+            }, { quoted: message });
+
         } catch (e) {
             console.error('Conversion error:', e);
-            await reply('❌ Failed to convert video to PTT. Please try again.');
-            await processingMsg.delete();
+            await client.sendMessage(from, {
+                text: `❌ Failed to convert:\n${e.message}`
+            }, { quoted: message });
+        } finally {
+            await processingMsg.delete().catch(() => {});
         }
     } catch (e) {
         console.error('Command error:', e);
-        reply('❌ An error occurred while processing your request');
+        await client.sendMessage(from, {
+            text: "⚠️ An unexpected error occurred"
+        }, { quoted: message });
     }
 });
