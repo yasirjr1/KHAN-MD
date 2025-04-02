@@ -2,40 +2,53 @@ const { cmd } = require("../command");
 
 // Safety Configuration
 const SAFETY = {
-  MAX_JIDS: 20, // Increased limit
-  BASE_DELAY: 3000, // 3 seconds
-  EXTRA_DELAY: 8000, // 8 seconds every 5th send
+  MAX_JIDS: 20,
+  BASE_DELAY: 3000,
+  EXTRA_DELAY: 8000,
 };
 
 cmd({
   pattern: "forward",
   alias: ["fwd"],
-  desc: "Bulk forward with media support",
+  desc: "Bulk forward media to groups",
   category: "owner",
   filename: __filename
-}, async (client, message, args, { isOwner }) => {
+}, async (client, message, match, { isOwner }) => {
   try {
-    if (!isOwner) return message.reply("*📛 Owner Only Command*");
-    if (!message.quoted) return message.reply("*🍁 Please reply to a message!*");
+    // Owner check
+    if (!isOwner) return await message.reply("*📛 Owner Only Command*");
+    
+    // Quoted message check
+    if (!message.quoted) return await message.reply("*🍁 Please reply to a message*");
 
-    // ===== [FIXED JID PROCESSING] ===== //
-    let input = typeof args === 'string' ? args : args.join(' ');
-    const rawJids = input.split(',')
-      .map(jid => jid.trim())
-      .filter(jid => jid.length > 0);
-
-    const validJids = rawJids.map(jid => {
-      // Keep JID as-is if already formatted correctly
-      if (/^\d+@g\.us$/.test(jid)) return jid;
-      // Remove any existing @g.us if malformed
-      const cleanJid = jid.replace(/@g\.us/g, '');
-      // Only keep if it's all numbers
-      return /^\d+$/.test(cleanJid) ? `${cleanJid}@g.us` : null;
-    }).filter(jid => jid !== null)
+    // ===== [BULLETPROOF JID PROCESSING] ===== //
+    let jidInput = "";
+    
+    // Handle all possible match formats
+    if (typeof match === "string") {
+      jidInput = match.trim();
+    } else if (Array.isArray(match)) {
+      jidInput = match.join(" ").trim();
+    } else if (match && typeof match === "object") {
+      jidInput = match.text || "";
+    }
+    
+    // Extract JIDs (supports comma or space separated)
+    const rawJids = jidInput.split(/[\s,]+/).filter(jid => jid.trim().length > 0);
+    
+    // Process JIDs (accepts with or without @g.us)
+    const validJids = rawJids
+      .map(jid => {
+        // Remove existing @g.us if present
+        const cleanJid = jid.replace(/@g\.us$/i, "");
+        // Only keep if it's all numbers
+        return /^\d+$/.test(cleanJid) ? `${cleanJid}@g.us` : null;
+      })
+      .filter(jid => jid !== null)
       .slice(0, SAFETY.MAX_JIDS);
 
     if (validJids.length === 0) {
-      return message.reply(
+      return await message.reply(
         "❌ No valid group JIDs found\n" +
         "Examples:\n" +
         ".fwd 120363411055156472@g.us,120363333939099948@g.us\n" +
@@ -43,7 +56,7 @@ cmd({
       );
     }
 
-    // ===== [YOUR MEDIA HANDLING CODE] ===== //
+    // ===== [YOUR ORIGINAL MEDIA HANDLING] ===== //
     const buffer = await message.quoted.download();
     const mtype = message.quoted.mtype;
     
@@ -71,48 +84,45 @@ cmd({
         };
         break;
       default:
-        return message.reply("❌ Only image, video, and audio messages are supported");
+        return await message.reply("❌ Only image, video, and audio messages are supported");
     }
 
-    // ===== [SENDING WITH DELAYS] ===== //
-    const startTime = Date.now();
+    // ===== [SAFE SENDING WITH PROGRESS] ===== //
     let successCount = 0;
     const failedJids = [];
-
+    
     for (const [index, jid] of validJids.entries()) {
       try {
         await client.sendMessage(jid, messageContent);
         successCount++;
         
-        // Progress update every 5 sends
+        // Progress update
         if ((index + 1) % 5 === 0) {
           await message.reply(`🔄 Sent to ${index + 1}/${validJids.length} groups...`);
         }
-
-        // Apply delays
-        const isExtraDelay = (index + 1) % 5 === 0;
-        await new Promise(resolve => setTimeout(resolve, 
-          isExtraDelay ? SAFETY.EXTRA_DELAY : SAFETY.BASE_DELAY));
+        
+        // Apply delay
+        const delayTime = (index + 1) % 5 === 0 ? SAFETY.EXTRA_DELAY : SAFETY.BASE_DELAY;
+        await new Promise(resolve => setTimeout(resolve, delayTime));
         
       } catch (error) {
-        failedJids.push({ jid, error: error.message.substring(0, 50) });
+        failedJids.push(jid.replace('@g.us', ''));
         await new Promise(resolve => setTimeout(resolve, SAFETY.BASE_DELAY));
       }
     }
 
-    // ===== [FINAL REPORT] ===== //
-    const duration = Math.round((Date.now() - startTime) / 1000);
+    // ===== [COMPREHENSIVE REPORT] ===== //
     let report = `✅ *Forward Complete*\n\n` +
-                 `📊 Success: ${successCount}/${validJids.length}\n` +
-                 `⏱ Duration: ${duration}s\n` +
+                 `📤 Success: ${successCount}/${validJids.length}\n` +
                  `📦 Media Type: ${mtype.replace('Message', '')}\n`;
-
+    
     if (failedJids.length > 0) {
-      report += `\n❌ Failed (${failedJids.length}):\n` +
-                failedJids.slice(0, 3).map(f => 
-                  `${f.jid.replace('@g.us', '')}: ${f.error}`
-                ).join('\n');
-      if (failedJids.length > 3) report += `\n...and ${failedJids.length - 3} more`;
+      report += `\n❌ Failed (${failedJids.length}): ${failedJids.slice(0, 5).join(', ')}`;
+      if (failedJids.length > 5) report += ` +${failedJids.length - 5} more`;
+    }
+    
+    if (rawJids.length > SAFETY.MAX_JIDS) {
+      report += `\n⚠️ Note: Limited to first ${SAFETY.MAX_JIDS} JIDs`;
     }
 
     await message.reply(report);
@@ -120,11 +130,10 @@ cmd({
   } catch (error) {
     console.error("Forward Error:", error);
     await message.reply(
-      `💢 Critical Error\n` +
-      `${error.message.substring(0, 100)}\n\n` +
-      `Please check:\n` +
+      `💢 Error: ${error.message.substring(0, 100)}\n\n` +
+      `Please try again or check:\n` +
       `1. JID formatting\n` +
-      `2. Media type\n` +
+      `2. Media type support\n` +
       `3. Bot permissions`
     );
   }
