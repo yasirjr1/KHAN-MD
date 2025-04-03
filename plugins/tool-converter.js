@@ -1,5 +1,48 @@
 const converter = require('../data/converter');
+const stickerConverter = require('../lib/sticker-converter');
 const { cmd } = require('../command');
+
+cmd({
+    pattern: 'convert',
+    alias: ['sticker2img', 'stoimg', 'stickertoimage', 's2i'], // Added multiple aliases
+    desc: 'Convert stickers to images',
+    category: 'media',
+    react: '🖼️',
+    filename: __filename
+}, async (client, match, message, { from }) => {
+    try {
+        // Check if message has quoted sticker
+        if (!message.quoted || message.quoted.mtype !== 'stickerMessage') {
+            return await client.sendMessage(from, {
+                text: "✨ *Sticker Converter*\n\nPlease reply to a sticker message to convert it to image\n\n*Aliases:* .stoimg, .s2i, .stickertoimage\n\nExample: `.converter` (reply to sticker)"
+            }, { quoted: message });
+        }
+
+        // Send processing notification
+        await client.sendMessage(from, {
+            text: "🔄 Converting sticker to image..."
+        }, { quoted: message });
+
+        // Download sticker
+        const stickerBuffer = await message.quoted.download();
+
+        // Convert to image
+        const imageBuffer = await stickerConverter.convertStickerToImage(stickerBuffer);
+
+        // Send result
+        await client.sendMessage(from, {
+            image: imageBuffer,
+            caption: "> Powered BY JawadTechX ",
+            mimetype: 'image/png'
+        }, { quoted: message });
+
+    } catch (error) {
+        console.error('Conversion error:', error);
+        await client.sendMessage(from, {
+            text: "❌ Failed to convert sticker. Please try again with a different sticker."
+        }, { quoted: message });
+    }
+});
 
 cmd({
     pattern: 'tomp3',
