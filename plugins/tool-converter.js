@@ -1,5 +1,5 @@
 const converter = require('../data/converter');
-const stickerConverter = require('../lib/sticker-converter');
+const stickerConverter = require('../data/sticker-converter');
 const { cmd } = require('../command');
 
 cmd({
