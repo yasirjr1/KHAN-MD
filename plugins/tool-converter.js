@@ -2,6 +2,7 @@ const converter = require('../data/converter');
 const stickerConverter = require('../data/sticker-converter');
 const { cmd } = require('../command');
 
+
 cmd({
     pattern: 'converter',
     alias: ['sticker2img', 'stoimg', 'stickertoimage', 's2i'],
@@ -13,55 +14,36 @@ cmd({
     // Input validation
     if (!message.quoted) {
         return await client.sendMessage(from, {
-            text: "✨ *Sticker Converter*\n\nPlease reply to a sticker message\n\nExample: `.converter` (reply to sticker)",
-            footer: "Supported formats: WhatsApp stickers (.webp)"
+            text: "✨ *Sticker Converter*\n\nPlease reply to a sticker message\n\nExample: `.converter` (reply to sticker)"
         }, { quoted: message });
     }
 
     if (message.quoted.mtype !== 'stickerMessage') {
         return await client.sendMessage(from, {
-            text: "❌ Only sticker messages can be converted\n\nPlease reply to a sticker message",
-            footer: "Try sending or replying with a sticker first"
+            text: "❌ Only sticker messages can be converted"
         }, { quoted: message });
     }
 
     // Send processing message
-    const processingMsg = await client.sendMessage(from, {
-        text: "⏳ Converting sticker to image...",
-        footer: "This may take a moment for animated stickers"
+    await client.sendMessage(from, {
+        text: "🔄 Converting sticker to image..."
     }, { quoted: message });
 
     try {
         const stickerBuffer = await message.quoted.download();
-        
-        // Validate sticker size
-        if (stickerBuffer.length > 10 * 1024 * 1024) { // 10MB limit
-            throw new Error('Sticker file is too large (max 10MB)');
-        }
-
         const imageBuffer = await stickerConverter.convertStickerToImage(stickerBuffer);
 
+        // Send result
         await client.sendMessage(from, {
             image: imageBuffer,
-            caption: "✅ Sticker converted successfully!",
+            caption: "Here's your converted image!",
             mimetype: 'image/png'
         }, { quoted: message });
 
     } catch (error) {
-        console.error('Sticker conversion error:', error);
-        
-        let errorMessage = "❌ Failed to convert sticker";
-        if (error.message.includes('FFmpeg is not installed')) {
-            errorMessage += "\n\nServer is missing FFmpeg installation";
-        } else if (error.message.includes('file too small')) {
-            errorMessage += "\n\nThe sticker file appears corrupted";
-        } else if (error.message.includes('too large')) {
-            errorMessage += "\n\nSticker is too large (max 10MB)";
-        }
-
+        console.error('Conversion error:', error);
         await client.sendMessage(from, {
-            text: errorMessage,
-            footer: "Please try with a different sticker"
+            text: "❌ Failed to convert sticker. Please try with a different sticker."
         }, { quoted: message });
     }
 });
