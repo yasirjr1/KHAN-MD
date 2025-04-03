@@ -3,43 +3,65 @@ const stickerConverter = require('../data/sticker-converter');
 const { cmd } = require('../command');
 
 cmd({
-    pattern: 'convert',
-    alias: ['sticker2img', 'stoimg', 'stickertoimage', 's2i'], // Added multiple aliases
+    pattern: 'converter',
+    alias: ['sticker2img', 'stoimg', 'stickertoimage', 's2i'],
     desc: 'Convert stickers to images',
     category: 'media',
     react: '🖼️',
     filename: __filename
 }, async (client, match, message, { from }) => {
+    // Input validation
+    if (!message.quoted) {
+        return await client.sendMessage(from, {
+            text: "✨ *Sticker Converter*\n\nPlease reply to a sticker message\n\nExample: `.converter` (reply to sticker)",
+            footer: "Supported formats: WhatsApp stickers (.webp)"
+        }, { quoted: message });
+    }
+
+    if (message.quoted.mtype !== 'stickerMessage') {
+        return await client.sendMessage(from, {
+            text: "❌ Only sticker messages can be converted\n\nPlease reply to a sticker message",
+            footer: "Try sending or replying with a sticker first"
+        }, { quoted: message });
+    }
+
+    // Send processing message
+    const processingMsg = await client.sendMessage(from, {
+        text: "⏳ Converting sticker to image...",
+        footer: "This may take a moment for animated stickers"
+    }, { quoted: message });
+
     try {
-        // Check if message has quoted sticker
-        if (!message.quoted || message.quoted.mtype !== 'stickerMessage') {
-            return await client.sendMessage(from, {
-                text: "✨ *Sticker Converter*\n\nPlease reply to a sticker message to convert it to image\n\n*Aliases:* .stoimg, .s2i, .stickertoimage\n\nExample: `.converter` (reply to sticker)"
-            }, { quoted: message });
+        const stickerBuffer = await message.quoted.download();
+        
+        // Validate sticker size
+        if (stickerBuffer.length > 10 * 1024 * 1024) { // 10MB limit
+            throw new Error('Sticker file is too large (max 10MB)');
         }
 
-        // Send processing notification
-        await client.sendMessage(from, {
-            text: "🔄 Converting sticker to image..."
-        }, { quoted: message });
-
-        // Download sticker
-        const stickerBuffer = await message.quoted.download();
-
-        // Convert to image
         const imageBuffer = await stickerConverter.convertStickerToImage(stickerBuffer);
 
-        // Send result
         await client.sendMessage(from, {
             image: imageBuffer,
-            caption: "> Powered BY JawadTechX ",
+            caption: "✅ Sticker converted successfully!",
             mimetype: 'image/png'
         }, { quoted: message });
 
     } catch (error) {
-        console.error('Conversion error:', error);
+        console.error('Sticker conversion error:', error);
+        
+        let errorMessage = "❌ Failed to convert sticker";
+        if (error.message.includes('FFmpeg is not installed')) {
+            errorMessage += "\n\nServer is missing FFmpeg installation";
+        } else if (error.message.includes('file too small')) {
+            errorMessage += "\n\nThe sticker file appears corrupted";
+        } else if (error.message.includes('too large')) {
+            errorMessage += "\n\nSticker is too large (max 10MB)";
+        }
+
         await client.sendMessage(from, {
-            text: "❌ Failed to convert sticker. Please try again with a different sticker."
+            text: errorMessage,
+            footer: "Please try with a different sticker"
         }, { quoted: message });
     }
 });
