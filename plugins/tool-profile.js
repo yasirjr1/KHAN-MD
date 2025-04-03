@@ -5,7 +5,7 @@ const { getBuffer, getGroupAdmins, getRandom, h2k, isUrl, Json, runtime, sleep, 
 cmd({
     pattern: "person",
     react: "👤",
-    alias: ["userinfo", "info"],
+    alias: ["userinfo", "profile"],
     desc: "Get complete user information including name and bio",
     category: "utility",
     use: '.person [@tag or reply]',
