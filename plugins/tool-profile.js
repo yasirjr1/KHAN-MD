@@ -5,112 +5,79 @@ const { getBuffer, getGroupAdmins, getRandom, h2k, isUrl, Json, runtime, sleep, 
 cmd({
     pattern: "person",
     react: "👤",
-    alias: ["userinfo", "profile"],
+    alias: ["userinfo", "info"],
     desc: "Get complete user profile information",
-    category: "group",
+    category: "utility",
     use: '.person [@tag or reply]',
     filename: __filename
 },
 async (conn, mek, m, { from, sender, isGroup, reply, quoted, participants }) => {
     try {
-        // 1. DETERMINE TARGET USER (FIXED REPLY/TAG HANDLING)
-        let userJid = quoted?.sender || 
-                     mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || 
-                     sender;
+        // 1. DETERMINE TARGET USER
+        const who = quoted?.sender || 
+                  mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || 
+                  sender;
 
-        // 2. VERIFY USER EXISTS (PROPER WHATSAPP CHECK)
-        const [user] = await conn.onWhatsApp(userJid).catch(() => []);
+        // 2. VERIFY USER EXISTS
+        const [user] = await conn.onWhatsApp(who).catch(() => []);
         if (!user?.exists) return reply("❌ User not registered on WhatsApp");
 
-        // 3. GET PROFILE PICTURE (WITH FALLBACK)
-        let ppUrl;
-        try {
-            ppUrl = await conn.profilePictureUrl(userJid, 'image');
-        } catch {
-            ppUrl = 'https://i.ibb.co/KhYC4FY/1221bc0bdd2354b42b293317ff2adbcf-icon.png';
-        }
+        // 3. GET PROFILE PICTURE
+        let ppUrl = await conn.profilePictureUrl(who, 'image').catch(() => 
+            'https://i.ibb.co/KhYC4FY/1221bc0bdd2354b42b293317ff2adbcf-icon.png'
+        );
 
-        // 4. GET NAME (MULTI-SOURCE FALLBACK)
-        let userName = userJid.split('@')[0];
-        try {
-            // Priority 1: Contact DB name
-            const contact = await conn.contactDB?.get(userJid);
-            if (contact?.name) {
-                userName = contact.name;
-            } 
-            // Priority 2: Pushname from presence
-            else {
-                const presence = await conn.presenceSubscribe(userJid);
-                if (presence?.pushname) userName = presence.pushname;
+        // 4. GET NAME WITH COMPLETE FALLBACK CHAIN
+        let name = await conn.getName(who).catch(async () => {
+            // Fallback 1: Check group participant info
+            if (isGroup) {
+                const member = participants.find(p => p.id === who);
+                if (member?.notify) return member.notify;
             }
-        } catch (e) {
-            console.log("Name fetch error:", e);
+            // Fallback 2: Contact DB
+            const contact = await conn.contactDB?.get(who).catch(() => null);
+            if (contact?.name) return contact.name;
+            // Fallback 3: Presence
+            const presence = await conn.presenceSubscribe(who).catch(() => null);
+            return presence?.pushname || who.split('@')[0];
+        });
+
+        // 5. GET BIO/ABOUT WITH COMPLETE FALLBACKS
+        let about = (await conn.fetchStatus(who).catch(() => {})).status || '';
+        if (!about) {
+            // Business account fallback
+            about = (await conn.getBusinessProfile(who).catch(() => {})).description || '';
         }
 
-        // 5. GET BIO/ABOUT (PERSONAL + BUSINESS)
-        let bio = {};
-        try {
-            // Try personal status first
-            const statusData = await conn.fetchStatus(userJid);
-            if (statusData?.status) {
-                bio = {
-                    text: statusData.status,
-                    type: "Personal",
-                    updated: statusData.setAt ? new Date(statusData.setAt * 1000) : null
-                };
-            }
-            // Fallback to business profile
-            else {
-                const businessProfile = await conn.getBusinessProfile(userJid).catch(() => null);
-                if (businessProfile?.description) {
-                    bio = {
-                        text: businessProfile.description,
-                        type: "Business",
-                        updated: null
-                    };
-                }
-            }
-        } catch (e) {
-            console.log("Bio fetch error:", e);
-        }
+        // 6. GET GROUP ROLE
+        let role = isGroup ? 
+            participants.find(p => p.id === who)?.admin ? "👑 Admin" : "👥 Member" : "";
 
-        // 6. GET GROUP ROLE (IF IN GROUP)
-        let groupRole = "";
-        if (isGroup) {
-            const participant = participants.find(p => p.id === userJid);
-            groupRole = participant?.admin ? "👑 Admin" : "👥 Member";
-        }
+        // 7. FORMAT OUTPUT
+        const info = `
+*GC MEMBER INFORMATION ℹ️*
 
-        // 7. FORMAT THE OUTPUT
-        const formattedBio = bio.text ? 
-            `${bio.text}\n└─ 📌 ${bio.type} Bio${bio.updated ? ` | 🕒 ${bio.updated.toLocaleString()}` : ''}` : 
-            "No bio available";
+📛 *Name:* ${name}
+🔢 *Number:* ${who.replace(/@.+/, '')}
+📌 *Type:* ${user.isBusiness ? "💼 Business" : user.isEnterprise ? "🏢 Enterprise" : "👤 Personal"}
 
-        const userInfo = `
-*GC MEMBER INFORMATION*
-
-📛 *Name:* ${userName}
-🔢 *Number:* ${userJid.replace(/@.+/, '')}
-📌 *Account Type:* ${user.isBusiness ? "💼 Business" : user.isEnterprise ? "🏢 Enterprise" : "👤 Personal"}
-
-*📝 About:*
-${formattedBio}
+*📝 About:* ${about || "Not set"}
 
 *⚙️ Account Info:*
 ✅ Registered: ${user.isUser ? "Yes" : "No"}
-🛡️ Verified: ${user.verifiedName ? "✅ Verified" : "❌ Not verified"}
-${isGroup ? `👥 *Group Role:* ${groupRole}` : ''}
+🛡️ Verified: ${user.verifiedName ? "Yes" : "No"}
+${role ? `👥 *Role:* ${role}` : ''}
 `.trim();
 
-        // 8. SEND THE RESULT
+        // 8. SEND RESULT
         await conn.sendMessage(from, {
             image: { url: ppUrl },
-            caption: userInfo,
-            mentions: [userJid]
+            caption: info,
+            mentions: [who]
         }, { quoted: mek });
 
     } catch (e) {
         console.error("Person command error:", e);
-        reply(`❌ Error: ${e.message || "Failed to fetch profile"}`);
+        reply(`❌ Error: ${e.message || "Failed to fetch info"}`);
     }
 });
