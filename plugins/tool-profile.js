@@ -5,8 +5,8 @@ const { getBuffer, getGroupAdmins, getRandom, h2k, isUrl, Json, runtime, sleep, 
 cmd({
     pattern: "person",
     react: "👤",
-    alias: ["userinfo", "profile"],
-    desc: "Get complete user information including bio",
+    alias: ["userinfo", "info"],
+    desc: "Get complete user information including name and bio",
     category: "utility",
     use: '.person [@tag or reply]',
     filename: __filename
@@ -32,40 +32,51 @@ async (conn, mek, m, { from, sender, isGroup, reply, quoted }) => {
             ppUrl = 'https://i.ibb.co/KhYC4FY/1221bc0bdd2354b42b293317ff2adbcf-icon.png';
         }
 
-        // Get user bio/status with improved error handling
-        let bio = "No bio set";
+        // [NEW] Get proper formatted name with multiple fallbacks
+        let userName = "Unknown";
+        try {
+            // 1. Try contactDB first
+            const contact = await conn.contactDB?.get(userJid);
+            if (contact?.name) {
+                userName = contact.name;
+            } else {
+                // 2. Try getting pushname from presence
+                const presence = await conn.presenceSubscribe(userJid);
+                if (presence?.pushname) {
+                    userName = presence.pushname;
+                } else {
+                    // 3. Fallback to JID
+                    userName = userJid.split('@')[0];
+                }
+            }
+        } catch (nameError) {
+            console.log("Name fetch error:", nameError);
+            userName = userJid.split('@')[0]; // Final fallback
+        }
+
+        // Get user bio/status
+        let bio = "No Bio Founded";
+        let bioTimestamp = "";
         try {
             const statusData = await conn.fetchStatus(userJid);
             if (statusData?.status) {
                 bio = statusData.status;
-                // Add timestamp if available
                 if (statusData.setAt) {
                     const bioDate = new Date(statusData.setAt * 1000);
-                    bio += `\n\n*Last updated:* ${bioDate.toLocaleString()}`;
+                    bioTimestamp = `\n⌚ Last updated: ${bioDate.toLocaleString()}`;
                 }
             }
         } catch (bioError) {
             console.log("Bio fetch error:", bioError);
         }
 
-        // Get user name with contactDB fallback
-        let username = userJid.split('@')[0];
-        try {
-            const contact = await conn.contactDB?.get(userJid);
-            if (contact?.name) username = contact.name;
-        } catch (contactError) {
-            console.log("Contact fetch error:", contactError);
-        }
-
         // Check group admin status if in group
-        let groupRole = "N/A";
+        let groupRole = "";
         if (isGroup) {
             try {
                 const groupData = await conn.groupMetadata(from);
                 const participant = groupData.participants.find(p => p.id === userJid);
-                if (participant) {
-                    groupRole = participant.admin ? "Admin" : "Member";
-                }
+                groupRole = participant?.admin ? "👑 Admin" : "👥 Member";
             } catch (groupError) {
                 console.log("Group data error:", groupError);
             }
@@ -73,21 +84,21 @@ async (conn, mek, m, { from, sender, isGroup, reply, quoted }) => {
 
         // Format the information
         const userInfo = `
-*👤 USER PROFILE*
+*👤 PROFILE INFORMATION MEMBER*
 
-*• Name:* ${username}
-*• JID:* ${userJid.replace(/@.+/, '')}
-*• Account Type:* ${user.isBusiness ? "Business" : user.isEnterprise ? "Enterprise" : "Personal"}
+📛 *Name:* ${userName}
+🔢 *Number:* ${userJid.replace(/@.+/, '')}
+📌 *Account Type:* ${user.isBusiness ? "💼 Business" : user.isEnterprise ? "🏢 Enterprise" : "👤 Personal"}
 
-*📝 Bio:*
-${bio}
+📝 *Bio:*
+${bio}${bioTimestamp}
 
 *📱 WhatsApp Info*
-*• Registered:* ${user.isUser ? "Yes" : "No"}
-*• Group Role:* ${groupRole}
-*• Verified:* ${user.verifiedName ? "✅ Verified" : "❌ Not verified"}
+✅ *Registered:* ${user.isUser ? "Yes" : "No"}
+🛡️ *Verified:* ${user.verifiedName ? "✅ Verified" : "❌ Not verified"}
+${groupRole ? `👥 *Group Role:* ${groupRole}` : ''}
 
-*🕒 Last Seen:* ${user.isOnline ? "Online now" : "Offline"}
+🌐 *Status:* ${user.isOnline ? "🟢 Online" : "🔴 Offline"}
 `.trim();
 
         // Send the information with profile picture
