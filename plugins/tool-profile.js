@@ -11,66 +11,67 @@ cmd({
     use: '.person [@tag or reply]',
     filename: __filename
 },
+async (conn, mek, m, { from, sender, isGroup, reply, quoted,cmd({
+    pattern: "person",
+    react: "👤",
+    alias: ["userinfo", "info"],
+    desc: "Get complete user profile information",
+    category: "utility",
+    use: '.person [@tag or reply]',
+    filename: __filename
+},
 async (conn, mek, m, { from, sender, isGroup, reply, quoted, participants }) => {
     try {
-        // 1. DETERMINE TARGET USER
-        let userJid = quoted?.sender || 
-                     mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || 
-                     sender;
+        // 1. DETERMINE TARGET USER (FIXED VERSION)
+        const who = quoted?.sender || 
+                  (mek.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]) || 
+                  (mek.fromMe ? conn.user.jid : sender);
 
         // 2. VERIFY USER EXISTS
-        const [user] = await conn.onWhatsApp(userJid).catch(() => []);
+        const [user] = await conn.onWhatsApp(who).catch(() => []);
         if (!user?.exists) return reply("❌ User not registered on WhatsApp");
 
-        // 3. GET PROFILE PICTURE (EXISTING LOGIC)
+        // 3. GET PROFILE PICTURE
         let ppUrl;
         try {
-            ppUrl = await conn.profilePictureUrl(userJid, 'image');
+            ppUrl = await conn.profilePictureUrl(who, 'image');
         } catch {
             ppUrl = 'https://i.ibb.co/KhYC4FY/1221bc0bdd2354b42b293317ff2adbcf-icon.png';
         }
 
-        // 4. OPTIMIZED NAME FETCHING WITH FALLBACKS
-        let userName = userJid.split('@')[0]; // Default to number
+        // 4. GET NAME (FIXED VERSION)
+        let username;
         try {
-            // Try conn.getName first
-            userName = await conn.getName(userJid).catch(() => userName);
-            
-            // If still number, try presence
-            if (userName === userJid.split('@')[0]) {
-                const presence = await conn.presenceSubscribe(userJid).catch(() => null);
-                userName = presence?.pushname || userName;
-            }
-            
-            // If still number, try participant info in groups
-            if (isGroup && userName === userJid.split('@')[0]) {
-                const member = participants.find(p => p.id === userJid);
-                userName = member?.notify || member?.name || userName;
+            username = await conn.getName(who);
+            // If still not getting proper name, try additional fallbacks
+            if (!username || username === who.split('@')[0]) {
+                const contact = await conn.contactDB?.get(who).catch(() => null);
+                username = contact?.name || username;
             }
         } catch (e) {
             console.log("Name fetch error:", e);
+            username = who.split('@')[0]; // Final fallback to number
         }
 
-        // 5. OPTIMIZED ABOUT/BIO FETCHING
+        // 5. GET ABOUT/BIO (FIXED VERSION)
         let about = '';
         try {
-            // Try fetchStatus first
-            const statusData = await conn.fetchStatus(userJid).catch(() => null);
+            const statusData = await conn.fetchStatus(who).catch(() => null);
             about = statusData?.status || '';
             
-            // If empty, try business profile
+            // Additional check for business accounts
             if (!about && user.isBusiness) {
-                const businessProfile = await conn.getBusinessProfile(userJid).catch(() => null);
+                const businessProfile = await conn.getBusinessProfile(who).catch(() => null);
                 about = businessProfile?.description || '';
             }
         } catch (e) {
             console.log("About fetch error:", e);
         }
 
-        // 6. GET GROUP ROLE (EXISTING LOGIC)
+        // 6. GET GROUP ROLE
         let groupRole = "";
         if (isGroup) {
-            const participant = participants.find(p => p.id === userJid);
+            const participant = participants.find(p => p.id === who);
             groupRole = participant?.admin ? "👑 Admin" : "👥 Member";
         }
 
@@ -78,8 +79,8 @@ async (conn, mek, m, { from, sender, isGroup, reply, quoted, participants }) => 
         const userInfo = `
 *GC MEMBER INFORMATION 🧊*
 
-📛 *Name:* ${userName}
-🔢 *Number:* ${userJid.replace(/@.+/, '')}
+📛 *Name:* ${username || who.split('@')[0]}
+🔢 *Number:* ${who.replace(/@.+/, '')}
 📌 *Account Type:* ${user.isBusiness ? "💼 Business" : user.isEnterprise ? "🏢 Enterprise" : "👤 Personal"}
 
 *📝 About:* ${about || 'Not set'}
@@ -94,7 +95,7 @@ ${isGroup ? `👥 *Group Role:* ${groupRole}` : ''}
         await conn.sendMessage(from, {
             image: { url: ppUrl },
             caption: userInfo,
-            mentions: [userJid]
+            mentions: [who]
         }, { quoted: mek });
 
     } catch (e) {
