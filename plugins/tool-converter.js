@@ -2,9 +2,8 @@ const converter = require('../data/converter');
 const stickerConverter = require('../data/sticker-converter');
 const { cmd } = require('../command');
 
-
 cmd({
-    pattern: 'converter',
+    pattern: 'convert',
     alias: ['sticker2img', 'stoimg', 'stickertoimage', 's2i'],
     desc: 'Convert stickers to images',
     category: 'media',
@@ -14,7 +13,7 @@ cmd({
     // Input validation
     if (!message.quoted) {
         return await client.sendMessage(from, {
-            text: "✨ *Sticker Converter*\n\nPlease reply to a sticker message\n\nExample: `.converter` (reply to sticker)"
+            text: "✨ *Sticker Converter*\n\nPlease reply to a sticker message\n\nExample: `.convert` (reply to sticker)"
         }, { quoted: message });
     }
 
@@ -36,14 +35,14 @@ cmd({
         // Send result
         await client.sendMessage(from, {
             image: imageBuffer,
-            caption: "Here's your converted image!",
+            caption: "> Powered By JawadTechX 🤍",
             mimetype: 'image/png'
         }, { quoted: message });
 
     } catch (error) {
         console.error('Conversion error:', error);
         await client.sendMessage(from, {
-            text: "❌ Failed to convert sticker. Please try with a different sticker."
+            text: "❌ Please try with a different sticker."
         }, { quoted: message });
     }
 });
