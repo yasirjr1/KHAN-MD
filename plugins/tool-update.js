@@ -9,7 +9,7 @@ cmd({
   pattern: "statusup",
   alias: ["uploadstatus", "poststatus"],
   react: '📢',
-  desc: "Upload replied audio to WhatsApp status (as voice note)",
+  desc: "Upload replied audio to WhatsApp status",
   category: "owner",
   filename: __filename
 }, async (client, message, match, { from, isOwner }) => {
@@ -24,23 +24,21 @@ cmd({
   };
 
   try {
-    // Permission check
+    // 1. Validate permissions and message
     if (!isOwner) {
       return await client.sendMessage(from, { text: "*📛 Owner only command*" }, { quoted: message });
     }
 
-    // Validate quoted message
     if (!match.quoted || match.quoted.mtype !== "audioMessage") {
       return await client.sendMessage(from, { text: "*❌ Reply to a voice message*" }, { quoted: message });
     }
 
-    // 1. Download and prepare audio
+    // 2. Download and convert audio
     const buffer = await match.quoted.download();
     const inputPath = path.join(tempDir, `input_${Date.now()}.mp3`);
     const outputPath = path.join(tempDir, `status_${Date.now()}.opus`);
     await fs.promises.writeFile(inputPath, buffer);
 
-    // 2. Convert to WhatsApp-compatible format
     const convertedBuffer = await new Promise((resolve, reject) => {
       const args = [
         '-y', '-i', inputPath,
@@ -59,7 +57,7 @@ cmd({
         await cleanFile(inputPath);
         if (code !== 0) {
           await cleanFile(outputPath);
-          return reject(new Error(`FFmpeg failed: ${stderr}`));
+          return reject(new Error(`FFmpeg error: ${stderr}`));
         }
         try {
           resolve(await fs.promises.readFile(outputPath));
@@ -70,35 +68,31 @@ cmd({
       ffmpeg.on('error', reject);
     });
 
-    // 3. Generate required hashes
-    const fileHash = crypto.createHash('sha256').update(convertedBuffer).digest('hex');
-    const fileEncSha256 = crypto.createHash('sha256').update(convertedBuffer).digest('base64');
-
-    // 4. Upload to status with all required parameters
-    await client.sendMessage('status@broadcast', {
+    // 3. Prepare message for status
+    const statusMessage = {
       audio: convertedBuffer,
       mimetype: 'audio/ogg; codecs=opus',
       ptt: true,
-      fileSha256: fileHash,
-      fileEncSha256: fileEncSha256,
-      fileLength: convertedBuffer.length,
-      seconds: Math.floor(convertedBuffer.length / 16000), // Approximate duration
-      mediaKeyTimestamp: Date.now(),
-      contextInfo: {}
-    }, {
-      upload: true,
-      mediaUploadTimeoutMs: 60000
+      contextInfo: {
+        isForwarded: false
+      }
+    };
+
+    // 4. Alternative status upload method
+    await client.updateProfileStatus(convertedBuffer, {
+      type: 'audio',
+      isVoiceNote: true
     });
 
-    // 5. Confirm successful upload
+    // 5. Success confirmation
     await client.sendMessage(from, {
-      text: "✅ Status updated! (May take 1-2 minutes to appear)"
+      text: "✅ Status updated! Check your WhatsApp status tab."
     }, { quoted: message });
 
   } catch (error) {
-    console.error('Status Upload Error:', error);
+    console.error('Status Error:', error);
     await client.sendMessage(from, {
-      text: `❌ Failed: ${error.message}\n\nNote: Some numbers can't post status updates`
+      text: `❌ Failed: ${error.message}\n\nPossible reasons:\n1. Your number can't post status\n2. Audio too long\n3. Server restrictions`
     }, { quoted: message });
   }
 });
