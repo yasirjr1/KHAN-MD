@@ -39,31 +39,38 @@ try {
     
     // Download the image
     const buffer = await quoted.download();
-    const mtype = quoted.mtype;
     
-    // Process image
-    const image = await Jimp.read(buffer);
-    if (!image) throw new Error("Invalid image format");
-    
-    // Make square if needed
-    const size = Math.max(image.bitmap.width, image.bitmap.height);
-    if (image.bitmap.width !== image.bitmap.height) {
-      const squareImage = new Jimp(size, size, 0x000000FF);
-      squareImage.composite(image, (size - image.bitmap.width) / 2, (size - image.bitmap.height) / 2);
-      image.clone(squareImage);
-    }
-    
-    // Resize to WhatsApp requirements
-    image.resize(640, 640);
-    const processedBuffer = await image.getBufferAsync(Jimp.MIME_JPEG);
-    
-    // Update profile picture
-    await conn.updateProfilePicture(botNumber, processedBuffer);
-    await conn.sendMessage(from, { react: { text: '✅', key: mek.key } });
-    
-    return await conn.sendMessage(from, {
-      text: "✅ *Bot profile picture updated successfully!*"
-    }, { quoted: mek });
+    // Process image with Jimp
+    Jimp.read(buffer)
+      .then(image => {
+        // Make square if needed
+        const size = Math.max(image.bitmap.width, image.bitmap.height);
+        if (image.bitmap.width !== image.bitmap.height) {
+          image.cover(size, size);
+        }
+        
+        // Resize and quality
+        image.resize(640, 640).quality(90);
+        
+        // Get buffer and update profile picture
+        image.getBuffer(Jimp.MIME_JPEG, async (err, processedBuffer) => {
+          if (err) throw err;
+          
+          await conn.updateProfilePicture(botNumber, processedBuffer);
+          await conn.sendMessage(from, { react: { text: '✅', key: mek.key } });
+          
+          return await conn.sendMessage(from, {
+            text: "✅ *Bot profile picture updated successfully!*"
+          }, { quoted: mek });
+        });
+      })
+      .catch(async e => {
+        await conn.sendMessage(from, { react: { text: '❌', key: mek.key } });
+        console.log(e);
+        return await conn.sendMessage(from, {
+          text: `❌ *Error processing image!*\n\n${e}`
+        }, { quoted: mek });
+      });
     
 } catch (e) {
     await conn.sendMessage(from, { react: { text: '❌', key: mek.key } });
