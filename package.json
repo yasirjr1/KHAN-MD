@@ -15,7 +15,6 @@
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@vitalets/google-translate-api": "^9.2.0",
     "pino": "^7.0.5",
-    "jimp": "^0.16.2",
     "pm2": "^6.0.5",
     "util": "^0.12.4",
     "express": "latest",
