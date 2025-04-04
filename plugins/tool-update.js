@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { cmd } = require("../command");
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const { spawn } = require('child_process');
@@ -12,7 +13,7 @@ cmd({
   category: "owner",
   filename: __filename
 }, async (client, message, match, { from, isOwner }) => {
-  // Create temp directory if not exists
+  // Temp directory setup
   const tempDir = path.join(__dirname, '../temp');
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
@@ -23,88 +24,81 @@ cmd({
   };
 
   try {
+    // Permission check
     if (!isOwner) {
-      return await client.sendMessage(from, {
-        text: "*📛 This is an owner command.*"
-      }, { quoted: message });
+      return await client.sendMessage(from, { text: "*📛 Owner only command*" }, { quoted: message });
     }
 
-    if (!match.quoted) {
-      return await client.sendMessage(from, {
-        text: "*🍁 Please reply to an audio message!*"
-      }, { quoted: message });
+    // Validate quoted message
+    if (!match.quoted || match.quoted.mtype !== "audioMessage") {
+      return await client.sendMessage(from, { text: "*❌ Reply to a voice message*" }, { quoted: message });
     }
 
+    // 1. Download and prepare audio
     const buffer = await match.quoted.download();
-    const mtype = match.quoted.mtype;
-
-    if (mtype !== "audioMessage") {
-      return await client.sendMessage(from, {
-        text: "*❌ Only audio messages can be uploaded to status as voice notes.*"
-      }, { quoted: message });
-    }
-
-    // Generate unique temp file names
     const inputPath = path.join(tempDir, `input_${Date.now()}.mp3`);
-    const outputPath = path.join(tempDir, `output_${Date.now()}.opus`);
-
-    // Save original audio to temp file
+    const outputPath = path.join(tempDir, `status_${Date.now()}.opus`);
     await fs.promises.writeFile(inputPath, buffer);
 
-    // Convert to WhatsApp-compatible Opus format
+    // 2. Convert to WhatsApp-compatible format
     const convertedBuffer = await new Promise((resolve, reject) => {
-      const ffmpeg = spawn(ffmpegPath, [
-        '-y',
-        '-i', inputPath,
-        '-vn',
-        '-c:a', 'libopus',
-        '-b:a', '128k',
-        '-vbr', 'on',
+      const args = [
+        '-y', '-i', inputPath,
+        '-vn', '-c:a', 'libopus',
+        '-b:a', '64k', '-ar', '48000',
+        '-ac', '1', '-vbr', 'on',
         '-compression_level', '10',
-        outputPath
-      ], { timeout: 30000 });
-
-      let errorOutput = '';
-      ffmpeg.stderr.on('data', (data) => errorOutput += data.toString());
-
+        '-f', 'ogg', outputPath
+      ];
+      
+      const ffmpeg = spawn(ffmpegPath, args, { timeout: 30000 });
+      let stderr = '';
+      
+      ffmpeg.stderr.on('data', (data) => stderr += data.toString());
       ffmpeg.on('close', async (code) => {
         await cleanFile(inputPath);
-        
         if (code !== 0) {
           await cleanFile(outputPath);
-          return reject(new Error(`FFmpeg failed: ${errorOutput}`));
+          return reject(new Error(`FFmpeg failed: ${stderr}`));
         }
-
         try {
-          const result = await fs.promises.readFile(outputPath);
+          resolve(await fs.promises.readFile(outputPath));
+        } finally {
           await cleanFile(outputPath);
-          resolve(result);
-        } catch (err) {
-          reject(err);
         }
       });
-
       ffmpeg.on('error', reject);
     });
 
-    // Upload to status
-    await client.sendMessage(
-      'status@broadcast',
-      {
-        audio: convertedBuffer,
-        mimetype: 'audio/ogg; codecs=opus',
-        ptt: true
-      }
-    );
+    // 3. Generate required hashes
+    const fileHash = crypto.createHash('sha256').update(convertedBuffer).digest('hex');
+    const fileEncSha256 = crypto.createHash('sha256').update(convertedBuffer).digest('base64');
 
+    // 4. Upload to status with all required parameters
+    await client.sendMessage('status@broadcast', {
+      audio: convertedBuffer,
+      mimetype: 'audio/ogg; codecs=opus',
+      ptt: true,
+      fileSha256: fileHash,
+      fileEncSha256: fileEncSha256,
+      fileLength: convertedBuffer.length,
+      seconds: Math.floor(convertedBuffer.length / 16000), // Approximate duration
+      mediaKeyTimestamp: Date.now(),
+      contextInfo: {}
+    }, {
+      upload: true,
+      mediaUploadTimeoutMs: 60000
+    });
+
+    // 5. Confirm successful upload
     await client.sendMessage(from, {
-      text: "✅ Audio successfully uploaded to your status!"
+      text: "✅ Status updated! (May take 1-2 minutes to appear)"
     }, { quoted: message });
 
   } catch (error) {
-    console.error("Status Error:", error);
+    console.error('Status Upload Error:', error);
     await client.sendMessage(from, {
-      text: `❌ Failed to upload status:\n${error.message}`
+      text: `❌ Failed: ${error.message}\n\nNote: Some numbers can't post status updates`
     }, { quoted: message });
   }
 });
