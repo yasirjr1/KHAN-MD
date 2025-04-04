@@ -2,97 +2,76 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { cmd } = require("../command");
-const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
-const { spawn } = require('child_process');
+const ffmpeg = require('fluent-ffmpeg');
+ffmpeg.setFfmpegPath(require('@ffmpeg-installer/ffmpeg').path);
 
 cmd({
   pattern: "statusup",
-  alias: ["uploadstatus", "poststatus"],
+  alias: ["poststatus"],
   react: '📢',
-  desc: "Upload replied audio to WhatsApp status",
+  desc: "Upload audio status (voice note)",
   category: "owner",
   filename: __filename
 }, async (client, message, match, { from, isOwner }) => {
-  // Temp directory setup
-  const tempDir = path.join(__dirname, '../temp');
-  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-  const cleanFile = async (filePath) => {
-    if (filePath && fs.existsSync(filePath)) {
-      try { await fs.promises.unlink(filePath) } catch {}
-    }
-  };
-
   try {
-    // 1. Validate permissions and message
-    if (!isOwner) {
-      return await client.sendMessage(from, { text: "*📛 Owner only command*" }, { quoted: message });
-    }
+    // 1. Validate permissions and input
+    if (!isOwner) return await message.reply("*📛 Owner only command*");
+    if (!message.quoted?.audio) return await message.reply("*❌ Reply to a voice message*");
 
-    if (!match.quoted || match.quoted.mtype !== "audioMessage") {
-      return await client.sendMessage(from, { text: "*❌ Reply to a voice message*" }, { quoted: message });
-    }
+    // 2. Create temp directory
+    const tempDir = path.join(__dirname, '../temp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-    // 2. Download and convert audio
-    const buffer = await match.quoted.download();
+    // 3. Download and convert with precise WhatsApp requirements
+    const buffer = await message.quoted.download();
     const inputPath = path.join(tempDir, `input_${Date.now()}.mp3`);
     const outputPath = path.join(tempDir, `status_${Date.now()}.opus`);
+    
     await fs.promises.writeFile(inputPath, buffer);
 
-    const convertedBuffer = await new Promise((resolve, reject) => {
-      const args = [
-        '-y', '-i', inputPath,
-        '-vn', '-c:a', 'libopus',
-        '-b:a', '64k', '-ar', '48000',
-        '-ac', '1', '-vbr', 'on',
-        '-compression_level', '10',
-        '-f', 'ogg', outputPath
-      ];
-      
-      const ffmpeg = spawn(ffmpegPath, args, { timeout: 30000 });
-      let stderr = '';
-      
-      ffmpeg.stderr.on('data', (data) => stderr += data.toString());
-      ffmpeg.on('close', async (code) => {
-        await cleanFile(inputPath);
-        if (code !== 0) {
-          await cleanFile(outputPath);
-          return reject(new Error(`FFmpeg error: ${stderr}`));
-        }
-        try {
-          resolve(await fs.promises.readFile(outputPath));
-        } finally {
-          await cleanFile(outputPath);
-        }
-      });
-      ffmpeg.on('error', reject);
+    // 4. EXACT WhatsApp voice status specification
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .audioCodec('libopus')
+        .audioBitrate('64k')
+        .audioFrequency(48000)
+        .audioChannels(1)
+        .outputOptions([
+          '-vbr on',
+          '-compression_level 10',
+          '-application voip' // CRUCIAL for WhatsApp voice notes
+        ])
+        .format('ogg')
+        .on('error', reject)
+        .on('end', resolve)
+        .save(outputPath);
     });
 
-    // 3. Prepare message for status
-    const statusMessage = {
-      audio: convertedBuffer,
+    // 5. Load converted file
+    const finalBuffer = await fs.promises.readFile(outputPath);
+
+    // 6. Upload with ALL required parameters
+    await client.sendMessage('status@broadcast', {
+      audio: finalBuffer,
       mimetype: 'audio/ogg; codecs=opus',
       ptt: true,
-      contextInfo: {
-        isForwarded: false
+      waveform: Buffer.from([0, 0, 0, 0, 0]), // Required dummy waveform
+      contextInfo: { 
+        externalAdReply: {
+          showAdAttribution: false
+        }
       }
-    };
-
-    // 4. Alternative status upload method
-    await client.updateProfileStatus(convertedBuffer, {
-      type: 'audio',
-      isVoiceNote: true
     });
 
-    // 5. Success confirmation
-    await client.sendMessage(from, {
-      text: "✅ Status updated! Check your WhatsApp status tab."
-    }, { quoted: message });
+    await message.reply("✅ Status updated successfully!");
 
   } catch (error) {
     console.error('Status Error:', error);
-    await client.sendMessage(from, {
-      text: `❌ Failed: ${error.message}\n\nPossible reasons:\n1. Your number can't post status\n2. Audio too long\n3. Server restrictions`
-    }, { quoted: message });
+    await message.reply(`❌ Failed: ${error.message}\nTry:\n1. Using personal number\n2. Shorter audio\n3. Restarting phone`);
+  } finally {
+    // Cleanup temp files
+    [inputPath, outputPath].forEach(file => {
+      if (file && fs.existsSync(file)) fs.unlinkSync(file);
+    });
   }
 });
