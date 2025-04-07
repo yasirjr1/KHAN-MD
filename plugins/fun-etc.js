@@ -27,7 +27,7 @@ cmd({
     const randomPair = eligibleParticipants[randomIndex];
 
     // Fetch wedding GIF
-    const apiUrl = "https://api.waifu.pics/sfw/kiss"; // Using kiss as wedding GIF
+    const apiUrl = "https://api.waifu.pics/sfw/hug"; // Using kiss as wedding GIF
     let res = await axios.get(apiUrl);
     let gifUrl = res.data.url;
 
