@@ -313,7 +313,7 @@ try {
   }
   events.commands.map(async(command) => {
   if (body && command.on === "body") {
-  command.function(conn, mek, m,{from, l, quoted, body, isCmd, command, args, q, text, isGroup, isChannel sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, isCreator, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply})
+  command.function(conn, mek, m,{from, l, quoted, body, isCmd, command, args, q, text, isGroup, isChannel, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, isCreator, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply})
   } else if (mek.q && command.on === "text") {
   command.function(conn, mek, m,{from, l, quoted, body, isCmd, command, args, q, text, isGroup, isChannel, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, isCreator, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply})
   } else if (
