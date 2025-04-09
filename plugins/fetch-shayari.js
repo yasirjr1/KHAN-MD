@@ -1,3 +1,4 @@
+const { cmd, commands } = require("../command");
 const axios = require('axios');
 const translate = require('@vitalets/google-translate-api');
 
