@@ -1,5 +1,52 @@
-const { cmd, commands } = require("../command");
+const { cmd } = require("../command");
 const axios = require("axios");
+
+cmd({
+    pattern: "tempnum",
+    alias: ["getnumber", "tempnumber", "gennumber", "fakenumber"],
+    desc: "Generate temporary numbers for specific country",
+    category: "tools",
+    react: "📱",
+    filename: __filename,
+    use: ".tempnum <country_code>"
+},
+async (conn, m, { args, reply }) => {
+    const countryCode = args[0]?.toLowerCase();
+    if (!countryCode) return reply("❌ Provide country code!\nExample: `.tempnum us`");
+
+    try {
+        const { data } = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${countryCode}`);
+        
+        // Enhanced response validation
+        if (!data?.result || !Array.isArray(data.result) || data.result.length === 0) {
+            return reply(`⚠️ No numbers available for *${countryCode.toUpperCase()}*!`);
+        }
+
+        // Safely extract country name
+        const country = data.result[0]?.country || countryCode.toUpperCase();
+
+        // Generate formatted list
+        const numberList = data.result
+            .slice(0, 15) // Limit to 15 numbers
+            .map((num, i) => `${i + 1}. ${num.number}`)
+            .join('\n');
+
+        return reply(
+            `╭───「 📱 TEMP NUMBERS 」\n` +
+            `│\n` +
+            `│ 🌍 *Country:* ${country}\n` +
+            `│ 🔢 *Available Numbers:*\n` +
+            `${numberList}\n` +
+            `│\n` +
+            `│ 📝 *Usage:* \`.otpbox <number>\`\n` +
+            `╰───「 Powered by KHAN MD 」`
+        );
+
+    } catch (error) {
+        console.error("TempNum Error:", error);
+        return reply("❌ Service unavailable. Try again later!");
+    }
+});
 
 cmd({
     pattern: "templist",
@@ -25,50 +72,6 @@ async (conn, m, { reply }) => {
     }
 });
 
-cmd({
-    pattern: "tempnum",
-    alias: ["getnumber", "gennumber", "fakenumber"],
-    desc: "Get temporary numbers for specific country",
-    category: "tools",
-    react: "📱",
-    filename: __filename,
-    use: ".tempnum <country_code>"
-},
-async (conn, m, { args, reply }) => {
-    const countryCode = args[0]?.toLowerCase();
-    if (!countryCode) return reply("❌ Missing country code!\nExample: `.tempnum us`");
-
-    try {
-        const { data } = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${countryCode}`);
-        
-        // Validate API response structure
-        if (!data || !Array.isArray(data.result) || data.result.length === 0) {
-            return reply("⚠️ No numbers found or invalid country code!");
-        }
-
-        // Safely extract first entry's country
-        const firstEntry = data.result[0] || {};
-        const country = firstEntry.country || "Unknown Country";
-
-        // Generate number list
-        const numberList = data.result
-            .map((num, index) => `${index + 1}. ${num.number || 'Invalid Number'}`)
-            .join('\n');
-
-        return reply(
-            `╭───[ 📱 TEMP NUMBERS ]───◆\n` +
-            `│ 🌐 Country: ${country}\n` +
-            `│ 🔢 Available Numbers:\n` +
-            `${numberList}\n` +
-            `│\n│ ✨ Use: \`.otpbox <number>\` to check OTPs\n` +
-            `╰───[ Powered by KHAN MD ]───◆`
-        );
-        
-    } catch (error) {
-        console.error("Temp Number Error:", error);
-        return reply("❌ Failed to fetch numbers. API might be down!");
-    }
-});
 cmd({
     pattern: "otpbox",
     alias: ["otp", "getnum", "tempotp"],
