@@ -3,48 +3,57 @@ const axios = require("axios");
 
 cmd({
     pattern: "tempnum",
-    alias: ["getnumber", "tempnumber", "gennumber", "fakenumber"],
-    desc: "Generate temporary numbers for specific country",
+    alias: ["getnumber", "tempnumber"],
+    desc: "Generate temp numbers",
     category: "tools",
     react: "📱",
-    filename: __filename,
-    use: ".tempnum <country_code>"
+    use: ".tempnum <country-code>"
 },
 async (conn, m, { args, reply }) => {
-    const countryCode = args[0]?.toLowerCase();
-    if (!countryCode) return reply("❌ Provide country code!\nExample: `.tempnum us`");
-
     try {
-        const { data } = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${countryCode}`);
-        
-        // Enhanced response validation
-        if (!data?.result || !Array.isArray(data.result) || data.result.length === 0) {
-            return reply(`⚠️ No numbers available for *${countryCode.toUpperCase()}*!`);
+        const code = args[0]?.toLowerCase();
+        if (!code) return reply("❗ Example: `.tempnum us`");
+
+        // Fetch data with timeout
+        const { data } = await axios.get(
+            `https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${code}`,
+            { timeout: 10000 }
+        );
+
+        // Full-proof validation
+        if (!data || 
+            !data.result || 
+            !Array.isArray(data.result) || 
+            data.result.length === 0 ||
+            !data.result[0]?.number
+        ) {
+            return reply(`❌ Invalid response for *${code.toUpperCase()}*!\nMaybe wrong country code?`);
         }
 
         // Safely extract country name
-        const country = data.result[0]?.country || countryCode.toUpperCase();
+        const firstItem = data.result.find(item => item?.country) || {};
+        const country = firstItem.country || code.toUpperCase();
 
-        // Generate formatted list
-        const numberList = data.result
-            .slice(0, 15) // Limit to 15 numbers
-            .map((num, i) => `${i + 1}. ${num.number}`)
+        // Generate number list with fallbacks
+        const numbers = data.result
+            .slice(0, 15)
+            .map((num, i) => `${i + 1}. ${num.number || 'N/A'}`)
             .join('\n');
 
+        // Format message
         return reply(
-            `╭───「 📱 TEMP NUMBERS 」\n` +
+            `╭──「 TEMP NUMBERS 」\n` +
             `│\n` +
-            `│ 🌍 *Country:* ${country}\n` +
-            `│ 🔢 *Available Numbers:*\n` +
-            `${numberList}\n` +
+            `│ • Country: ${country}\n` +
+            `│ • Available:\n${numbers}\n` +
             `│\n` +
-            `│ 📝 *Usage:* \`.otpbox <number>\`\n` +
-            `╰───「 Powered by KHAN MD 」`
+            `│ Use: .otpbox <number>\n` +
+            `╰──「 @KHAN-MD 」`
         );
 
-    } catch (error) {
-        console.error("TempNum Error:", error);
-        return reply("❌ Service unavailable. Try again later!");
+    } catch (err) {
+        console.error("TEMP NUM ERROR:", err);
+        return reply(`❌ Failed: ${err.message.includes("timeout") ? "API Timeout" : "Invalid Response"}`);
     }
 });
 
