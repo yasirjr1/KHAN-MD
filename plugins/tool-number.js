@@ -40,13 +40,14 @@ async (conn, m, { args, reply }) => {
 
     try {
         const { data } = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${id}`);
-        const numbers = Array.isArray(data?.result) ? data.result : [];
-
-        if (numbers.length === 0) {
+        
+        // Check if the data and result are valid
+        if (!data || !data.result || data.result.length === 0) {
             return reply("❌ No temporary numbers found or invalid country ID.");
         }
 
-        const country = numbers[0]?.country || "Unknown";
+        const numbers = data.result;
+        const country = numbers[0].country;  // Use the country of the first result
 
         let text = `╭─〔 *📱 Temp Number Generator* 〕\n`;
         text += `│ 🌐 *Country:* ${country}\n`;
