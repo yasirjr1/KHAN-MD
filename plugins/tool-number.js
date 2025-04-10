@@ -28,7 +28,7 @@ async (conn, m, { reply }) => {
 
 cmd({
     pattern: "tempnum",
-    alias: ["getnumber", "gennumber", "tempnumber", "fakenumber"],
+    alias: ["getnumber", "tempnumber", "gennumber", "fakenumber"],
     desc: "Get temp numbers for specific country ID",
     category: "tools",
     react: "📱",
@@ -43,14 +43,15 @@ async (conn, m, { args, reply }) => {
         const res = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${id}`);
         const data = res.data?.result;
 
-        if (!data || data.length === 0) {
+        if (!Array.isArray(data) || data.length === 0) {
             return reply("❌ No temporary numbers found or invalid country ID.");
         }
 
         const randomFive = data.sort(() => 0.5 - Math.random()).slice(0, 5);
+        const country = randomFive[0]?.country || "Unknown";
 
         let txt = `╭───〔 *📱 Fake Numbers Generator* 〕\n`;
-        txt += `│ 🌍 *Country:* ${randomFive[0].country}\n`;
+        txt += `│ 🌍 *Country:* ${country}\n`;
         txt += `│ 📦 *Available:* ${data.length} numbers\n│\n`;
         txt += `│ 🎲 *Random 5 Numbers:*\n`;
 
