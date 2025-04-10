@@ -25,7 +25,6 @@ async (conn, m, { reply }) => {
     }
 });
 
-
 cmd({
     pattern: "tempnum",
     alias: ["getnumber", "tempnumber", "gennumber", "fakenumber"],
@@ -40,32 +39,32 @@ async (conn, m, { args, reply }) => {
     if (!id) return reply("❌ Please provide a country ID.\n\nExample: `.tempnum us`");
 
     try {
-        const res = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${id}`);
-        const data = res.data?.result;
+        const { data } = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${id}`);
+        const numbers = Array.isArray(data?.result) ? data.result : [];
 
-        if (!Array.isArray(data) || data.length === 0) {
+        if (numbers.length === 0) {
             return reply("❌ No temporary numbers found or invalid country ID.");
         }
 
-        const randomFive = data.sort(() => 0.5 - Math.random()).slice(0, 5);
-        const country = randomFive[0]?.country || "Unknown";
+        const selected = numbers.sort(() => 0.5 - Math.random()).slice(0, 5);
+        const country = selected[0]?.country || "Unknown";
 
-        let txt = `╭───〔 *📱 Fake Numbers Generator* 〕\n`;
-        txt += `│ 🌍 *Country:* ${country}\n`;
-        txt += `│ 📦 *Available:* ${data.length} numbers\n│\n`;
-        txt += `│ 🎲 *Random 5 Numbers:*\n`;
+        let text = `╭─〔 *📱 Temp Number Generator* 〕\n`;
+        text += `│ 🌐 *Country:* ${country}\n`;
+        text += `│ 📋 *Total Numbers:* ${numbers.length}\n│\n`;
+        text += `│ 🔢 *Random 5 Numbers:*\n`;
 
-        randomFive.forEach((item, i) => {
-            txt += `│ ${i + 1}. ☎️ ${item.number}\n`;
+        selected.forEach((num, i) => {
+            text += `│ ${i + 1}. ${num.number}\n`;
         });
 
-        txt += `│\n│ 🔎 *Use:* \`.otpbox <number>\` to check inbox\n`;
-        txt += `╰─ Powered by *KHAN MD*`;
+        text += `│\n│ ✉️ *Use:* \`.otpbox <number>\` to get inbox\n`;
+        text += `╰─ Powered by *KHAN MD*`;
 
-        await reply(txt);
+        return reply(text);
     } catch (err) {
-        console.error("❌ TEMPNUM ERROR:", err);
-        reply("❌ Failed to fetch temporary numbers. Please try again later.");
+        console.error("❌ tempnum error:", err);
+        return reply("❌ API Error: Failed to fetch temporary numbers.");
     }
 });
 
