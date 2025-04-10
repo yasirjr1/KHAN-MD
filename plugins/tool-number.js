@@ -3,57 +3,64 @@ const axios = require("axios");
 
 cmd({
     pattern: "tempnum",
-    alias: ["getnumber", "tempnumber"],
-    desc: "Generate temp numbers",
+    alias: ["fakenum"],
+    desc: "Generate temporary numbers",
     category: "tools",
-    react: "📱",
-    use: ".tempnum <country-code>"
+    react: "✅",
+    use: ".tempnum us"
 },
 async (conn, m, { args, reply }) => {
     try {
-        const code = args[0]?.toLowerCase();
-        if (!code) return reply("❗ Example: `.tempnum us`");
-
-        // Fetch data with timeout
+        const code = args[0]?.toLowerCase() || 'us';
+        
+        // Ultra-safe API call
         const { data } = await axios.get(
             `https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${code}`,
-            { timeout: 10000 }
+            { 
+                timeout: 8000,
+                validateStatus: () => true // Accept all status codes
+            }
         );
 
-        // Full-proof validation
-        if (!data || 
-            !data.result || 
-            !Array.isArray(data.result) || 
-            data.result.length === 0 ||
-            !data.result[0]?.number
-        ) {
-            return reply(`❌ Invalid response for *${code.toUpperCase()}*!\nMaybe wrong country code?`);
+        // Military-grade validation
+        const validData = (
+            data &&
+            Array.isArray(data?.result) &&
+            data.result.length > 0 &&
+            typeof data.result[0]?.number === 'string'
+        );
+
+        if (!validData) {
+            let errorMsg = "⚠️ Invalid API Response Structure!";
+            if (data?.result?.length === 0) errorMsg = `📭 No numbers found for *${code.toUpperCase()}*`;
+            return reply(errorMsg);
         }
 
-        // Safely extract country name
-        const firstItem = data.result.find(item => item?.country) || {};
-        const country = firstItem.country || code.toUpperCase();
+        // Bulletproof data extraction
+        const safeResult = data.result.filter(item => 
+            item?.number && item?.country
+        );
 
-        // Generate number list with fallbacks
-        const numbers = data.result
-            .slice(0, 15)
-            .map((num, i) => `${i + 1}. ${num.number || 'N/A'}`)
+        // Formatting with nuclear safety
+        const numbersList = safeResult
+            .slice(0, 10)
+            .map((item, index) => 
+                `${index + 1}. ${item.number.replace(/(\d{3})(\d{3})(\d{4})/, "+$1-$2-$3")}`
+            )
             .join('\n');
 
-        // Format message
         return reply(
-            `╭──「 TEMP NUMBERS 」\n` +
+            `╭──「 𝗧𝗘𝗠𝗣 𝗡𝗨𝗠𝗕𝗘𝗥𝗦 」\n` +
             `│\n` +
-            `│ • Country: ${country}\n` +
-            `│ • Available:\n${numbers}\n` +
+            `│ 🌐 𝗖𝗼𝘂𝗻𝘁𝗿𝘆: ${safeResult[0]?.country || code.toUpperCase()}\n` +
+            `│ 📞 𝗡𝘂𝗺𝗯𝗲𝗿𝘀:\n${numbersList}\n` +
             `│\n` +
-            `│ Use: .otpbox <number>\n` +
-            `╰──「 @KHAN-MD 」`
+            `╰──「 𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗯𝘆 𝗞𝗛𝗔𝗡-𝗠𝗗 」`
         );
 
     } catch (err) {
-        console.error("TEMP NUM ERROR:", err);
-        return reply(`❌ Failed: ${err.message.includes("timeout") ? "API Timeout" : "Invalid Response"}`);
+        console.error("Final Boss Error:", err);
+        return reply("🔧 Temporary outage - try again later!");
     }
 });
 
