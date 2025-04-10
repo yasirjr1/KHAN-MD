@@ -46,15 +46,14 @@ async (conn, m, { args, reply }) => {
             return reply("❌ No temporary numbers found or invalid country ID.");
         }
 
-        const selected = numbers.sort(() => 0.5 - Math.random()).slice(0, 5);
-        const country = selected[0]?.country || "Unknown";
+        const country = numbers[0]?.country || "Unknown";
 
         let text = `╭─〔 *📱 Temp Number Generator* 〕\n`;
         text += `│ 🌐 *Country:* ${country}\n`;
         text += `│ 📋 *Total Numbers:* ${numbers.length}\n│\n`;
-        text += `│ 🔢 *Random 5 Numbers:*\n`;
+        text += `│ 🔢 *All Numbers:*\n`;
 
-        selected.forEach((num, i) => {
+        numbers.forEach((num, i) => {
             text += `│ ${i + 1}. ${num.number}\n`;
         });
 
