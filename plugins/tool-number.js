@@ -46,13 +46,18 @@ async (conn, m, { args, reply }) => {
             return reply("❌ No temporary numbers found or invalid country ID.");
         }
 
-        const selectedNumbers = results.sort(() => 0.5 - Math.random()).slice(0, 5);
+        const selected = results.sort(() => 0.5 - Math.random()).slice(0, 5);
 
-        let text = `╭─「 *Fake Numbers* 」\n│ *Country:* ${selectedNumbers[0].country}\n│ *Total:* ${results.length}\n│ *Random 5 Selected:*\n`;
-        for (let i = 0; i < selectedNumbers.length; i++) {
-            text += `│ ${i + 1}. *${selectedNumbers[i].number}*\n`;
+        let text = `╭─〔  *📱 Fake Numbers*  〕\n`;
+        text += `│ 🌍 *Country:* ${selected[0].country}\n`;
+        text += `│ 📦 *Available:* ${results.length} numbers\n│\n`;
+        text += `│ 🎲 *Random 5 Selected:*\n`;
+
+        for (let i = 0; i < selected.length; i++) {
+            text += `│ ${i + 1}. ☎️ ${selected[i].number}\n`;
         }
-      text += `│ Use .otpbox 92342 number to get otp*\n`; }
+
+        text += `│\n│ 🔎 *Use:* \`.otpbox <number>\` to check inbox\n`;
         text += `╰─ Powered by *KHAN MD*`;
 
         await reply(text);
