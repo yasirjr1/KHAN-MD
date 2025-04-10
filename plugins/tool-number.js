@@ -3,64 +3,50 @@ const axios = require("axios");
 
 cmd({
     pattern: "tempnum",
-    alias: ["fakenum"],
-    desc: "Generate temporary numbers",
+    alias: ["fakenum", "tempnumber"],
+    desc: "Generate temporary numbers for any country",
     category: "tools",
-    react: "✅",
+    react: "📱",
     use: ".tempnum us"
 },
-async (conn, m, { args, reply }) => {
+async (Void, m, { args, reply }) => {
     try {
-        const code = args[0]?.toLowerCase() || 'us';
+        const countryCode = args[0]?.toLowerCase() || "us"; // Default to US if no code provided
         
-        // Ultra-safe API call
-        const { data } = await axios.get(
-            `https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${code}`,
-            { 
-                timeout: 8000,
-                validateStatus: () => true // Accept all status codes
-            }
+        // Fetch data with error handling
+        const response = await axios.get(
+            `https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${countryCode}`,
+            { timeout: 5000 }
         );
 
-        // Military-grade validation
-        const validData = (
-            data &&
-            Array.isArray(data?.result) &&
-            data.result.length > 0 &&
-            typeof data.result[0]?.number === 'string'
-        );
+        const data = response.data;
 
-        if (!validData) {
-            let errorMsg = "⚠️ Invalid API Response Structure!";
-            if (data?.result?.length === 0) errorMsg = `📭 No numbers found for *${code.toUpperCase()}*`;
-            return reply(errorMsg);
+        // Check if response contains valid data
+        if (!data || !Array.isArray(data.result) || data.result.length === 0) {
+            return reply(`❌ No numbers found for *${countryCode.toUpperCase()}*.\nTry another country code!`);
         }
 
-        // Bulletproof data extraction
-        const safeResult = data.result.filter(item => 
-            item?.number && item?.country
-        );
+        // Extract numbers safely
+        const numbers = data.result.slice(0, 15); // Limit to 15 numbers max
+        const country = numbers[0]?.country || countryCode.toUpperCase();
 
-        // Formatting with nuclear safety
-        const numbersList = safeResult
-            .slice(0, 10)
-            .map((item, index) => 
-                `${index + 1}. ${item.number.replace(/(\d{3})(\d{3})(\d{4})/, "+$1-$2-$3")}`
-            )
-            .join('\n');
+        // Format the output
+        let numberList = numbers.map((num, i) => `${i + 1}. ${num.number}`).join("\n");
 
-        return reply(
-            `╭──「 𝗧𝗘𝗠𝗣 𝗡𝗨𝗠𝗕𝗘𝗥𝗦 」\n` +
+        await reply(
+            `╭──「 📱 *TEMP NUMBERS* 」\n` +
             `│\n` +
-            `│ 🌐 𝗖𝗼𝘂𝗻𝘁𝗿𝘆: ${safeResult[0]?.country || code.toUpperCase()}\n` +
-            `│ 📞 𝗡𝘂𝗺𝗯𝗲𝗿𝘀:\n${numbersList}\n` +
+            `│ 🌍 *Country:* ${country}\n` +
+            `│ 🔢 *Available Numbers:*\n` +
+            `${numberList}\n` +
             `│\n` +
-            `╰──「 𝗣𝗼𝘄𝗲𝗿𝗲𝗱 𝗯𝘆 𝗞𝗛𝗔𝗡-𝗠𝗗 」`
+            `│ 💡 *Usage:* .otpbox <number>\n` +
+            `╰──「 Powered by *KHAN-MD* 」`
         );
 
     } catch (err) {
-        console.error("Final Boss Error:", err);
-        return reply("🔧 Temporary outage - try again later!");
+        console.error("API Error:", err);
+        reply("⚠ API is currently down or not responding. Try again later!");
     }
 });
 
