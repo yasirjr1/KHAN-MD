@@ -27,7 +27,7 @@ async (conn, m, { reply }) => {
 
 cmd({
     pattern: "tempnum",
-    alias: ["getnumber", "gennumber", "fakenumber"],
+    alias: ["getnumber", "tempnumber", "gennumber", "fakenumber"],
     desc: "Get temp numbers for specific country ID",
     category: "tools",
     react: "📱",
