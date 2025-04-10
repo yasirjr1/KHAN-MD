@@ -27,47 +27,48 @@ async (conn, m, { reply }) => {
 
 cmd({
     pattern: "tempnum",
-    alias: ["getnumber", "tempnumber", "gennumber", "fakenumber"],
-    desc: "Get temp numbers for specific country ID",
+    alias: ["getnumber", "gennumber", "fakenumber"],
+    desc: "Get temporary numbers for specific country",
     category: "tools",
     react: "📱",
     filename: __filename,
-    use: ".tempnum <country_id>"
+    use: ".tempnum <country_code>"
 },
 async (conn, m, { args, reply }) => {
-    const id = args[0]?.toLowerCase();
-    if (!id) return reply("❌ Please provide a country ID.\n\nExample: `.tempnum us`");
+    const countryCode = args[0]?.toLowerCase();
+    if (!countryCode) return reply("❌ Missing country code!\nExample: `.tempnum us`");
 
     try {
-        const { data } = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${id}`);
+        const { data } = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${countryCode}`);
         
-        // Validate response structure and data type
+        // Validate API response structure
         if (!data || !Array.isArray(data.result) || data.result.length === 0) {
-            return reply("❌ Invalid API response or no numbers found.");
+            return reply("⚠️ No numbers found or invalid country code!");
         }
 
-        const numbers = data.result;
-        const country = numbers[0]?.country || "Unknown"; // Safely get country
+        // Safely extract first entry's country
+        const firstEntry = data.result[0] || {};
+        const country = firstEntry.country || "Unknown Country";
 
-        let text = `╭─〔 *📱 Temp Number Generator* 〕\n`;
-        text += `│ 🌐 *Country:* ${country}\n`;
-        text += `│ 📋 *Total Numbers:* ${numbers.length}\n│\n`;
-        text += `│ 🔢 *All Numbers:*\n`;
+        // Generate number list
+        const numberList = data.result
+            .map((num, index) => `${index + 1}. ${num.number || 'Invalid Number'}`)
+            .join('\n');
 
-        numbers.forEach((num, i) => {
-            text += `│ ${i + 1}. ${num.number}\n`;
-        });
-
-        text += `│\n│ ✉️ *Use:* \`.otpbox <number>\` to get inbox\n`;
-        text += `╰─ Powered by *KHAN MD*`;
-
-        return reply(text);
-    } catch (err) {
-        console.error("❌ tempnum error:", err);
-        return reply("❌ API Error: Failed to fetch temporary numbers.");
+        return reply(
+            `╭───[ 📱 TEMP NUMBERS ]───◆\n` +
+            `│ 🌐 Country: ${country}\n` +
+            `│ 🔢 Available Numbers:\n` +
+            `${numberList}\n` +
+            `│\n│ ✨ Use: \`.otpbox <number>\` to check OTPs\n` +
+            `╰───[ Powered by KHAN MD ]───◆`
+        );
+        
+    } catch (error) {
+        console.error("Temp Number Error:", error);
+        return reply("❌ Failed to fetch numbers. API might be down!");
     }
 });
-
 cmd({
     pattern: "otpbox",
     alias: ["otp", "getnum", "tempotp"],
