@@ -25,9 +25,10 @@ async (conn, m, { reply }) => {
     }
 });
 
+
 cmd({
     pattern: "tempnum",
-    alias: ["getnumber", "tempnumber", "gennumber", "fakenumber"],
+    alias: ["getnumber", "gennumber", "tempnumber", "fakenumber"],
     desc: "Get temp numbers for specific country ID",
     category: "tools",
     react: "📱",
@@ -39,30 +40,30 @@ async (conn, m, { args, reply }) => {
     if (!id) return reply("❌ Please provide a country ID.\n\nExample: `.tempnum us`");
 
     try {
-        const response = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${id}`);
-        const results = response.data?.result;
+        const res = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${id}`);
+        const data = res.data?.result;
 
-        if (!results || results.length === 0) {
+        if (!data || data.length === 0) {
             return reply("❌ No temporary numbers found or invalid country ID.");
         }
 
-        const selected = results.sort(() => 0.5 - Math.random()).slice(0, 5);
+        const randomFive = data.sort(() => 0.5 - Math.random()).slice(0, 5);
 
-        let text = `╭─〔  *📱 Fake Numbers*  〕\n`;
-        text += `│ 🌍 *Country:* ${selected[0].country}\n`;
-        text += `│ 📦 *Available:* ${results.length} numbers\n│\n`;
-        text += `│ 🎲 *Random 5 Selected:*\n`;
+        let txt = `╭───〔 *📱 Fake Numbers Generator* 〕\n`;
+        txt += `│ 🌍 *Country:* ${randomFive[0].country}\n`;
+        txt += `│ 📦 *Available:* ${data.length} numbers\n│\n`;
+        txt += `│ 🎲 *Random 5 Numbers:*\n`;
 
-        for (let i = 0; i < selected.length; i++) {
-            text += `│ ${i + 1}. ☎️ ${selected[i].number}\n`;
-        }
+        randomFive.forEach((item, i) => {
+            txt += `│ ${i + 1}. ☎️ ${item.number}\n`;
+        });
 
-        text += `│\n│ 🔎 *Use:* \`.otpbox <number>\` to check inbox\n`;
-        text += `╰─ Powered by *KHAN MD*`;
+        txt += `│\n│ 🔎 *Use:* \`.otpbox <number>\` to check inbox\n`;
+        txt += `╰─ Powered by *KHAN MD*`;
 
-        await reply(text);
-    } catch (e) {
-        console.error("TEMPNUM ERROR:", e);
+        await reply(txt);
+    } catch (err) {
+        console.error("❌ TEMPNUM ERROR:", err);
         reply("❌ Failed to fetch temporary numbers. Please try again later.");
     }
 });
