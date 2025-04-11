@@ -4,33 +4,37 @@ const axios = require('axios');
 cmd({
     pattern: "wastalk",
     desc: "Fetch WhatsApp channel info using a given URL",
-    category: "search",
-    react: "🛰️",
+    category: "main",
+    react: "🪀",
     filename: __filename
-}, 
-async (conn, mek, m, { args, from, reply }) => {
+},
+async (conn, mek, m, { from, quoted, body, isCmd, command, args, q, isGroup, sender, senderNumber, botNumber2, botNumber, pushname, isMe, isOwner, groupMetadata, groupName, participants, groupAdmins, isBotAdmins, isAdmins, reply }) => {
     try {
-        if (!args[0]) return reply("Please provide a WhatsApp Channel link.\n\nExample:\n.wastalk <channel_link>");
+        const url = q || (quoted?.text ?? "").trim();
 
-        const url = `https://apis-keith.vercel.app/stalker/wachannel?url=${encodeURIComponent(args[0])}`;
-        const res = await axios.get(url);
+        if (!url || !url.includes("whatsapp.com/channel/")) {
+            return reply(`Please provide a valid WhatsApp Channel URL.\n\n*Example:* .wastalk https://whatsapp.com/channel/0029VatOy2EAzNc2WcShQw1j`);
+        }
 
-        if (!res.data.status) return reply("Failed to fetch channel data.");
+        const res = await axios.get(`https://apis-keith.vercel.app/stalker/wachannel?url=${encodeURIComponent(url)}`);
+        const data = res.data;
 
-        const { title, followers, description, img } = res.data.result;
+        if (!data.status) {
+            return reply("Failed to fetch channel data. Please try again later.");
+        }
 
-        const caption = `╭━━〔 *WhatsApp Channel Info* 〕━━┈⊷
-┃◈ *📢 Title:* ${title}
-┃◈ *👥 Followers:* ${followers}
-┃◈ *📝 Description:*
-┃◈ ${description.replace(/\*/g, '')}
-╰━━━━━━━━━━━━━━━⊷`;
+        const result = data.result;
+
+        const caption = `🔍 *WhatsApp Channel Info*\n\n` +
+                        `*📛 Title:* ${result.title}\n` +
+                        `*🧑‍🤝‍🧑 Followers:* ${result.followers}\n\n` +
+                        `*📝 Description:*\n${result.description}`;
 
         await conn.sendMessage(from, {
-            image: { url: img },
+            image: { url: result.img },
             caption,
             contextInfo: {
-                mentionedJid: [m.sender],
+                mentionedJid: [sender],
                 forwardingScore: 999,
                 isForwarded: true,
                 forwardedNewsletterMessageInfo: {
@@ -42,7 +46,7 @@ async (conn, mek, m, { args, from, reply }) => {
         }, { quoted: mek });
 
     } catch (err) {
-        console.error("Error in wastalk command:", err);
-        reply("An error occurred while fetching channel data.");
+        console.error("WAStalk Error:", err);
+        reply("Something went wrong while fetching the channel info.");
     }
 });
