@@ -2,17 +2,36 @@ const { cmd } = require('../command');
 const axios = require('axios');
 
 cmd({
-    pattern: "voiceai",
-    alias: ["vai", "aivoice"],
+    pattern: "aivoice",
+    alias: ["vai", "voicex", "voiceai"],
     desc: "Text to speech with different AI voices",
-    category: "ai",
+    category: "main",
+    react: "🪃",
     filename: __filename
-}, async (conn, m, store, {
-    from,
-    quoted,
-    args,
-    q,
-    reply
+},
+async (conn, mek, m, { 
+    from, 
+    quoted, 
+    body, 
+    isCmd, 
+    command, 
+    args, 
+    q, 
+    isGroup, 
+    sender, 
+    senderNumber, 
+    botNumber2, 
+    botNumber, 
+    pushname, 
+    isMe, 
+    isOwner, 
+    groupMetadata, 
+    groupName, 
+    participants, 
+    groupAdmins, 
+    isBotAdmins, 
+    isAdmins, 
+    reply 
 }) => {
     try {
         // Split the command and text
@@ -20,7 +39,7 @@ cmd({
         const text = textParts.join(" ");
         
         if (!text) {
-            return reply("Please provide text after the command.\nExample: .voiceai hello");
+            return reply("Please provide text after the command.\nExample: .aivoice hello");
         }
 
         // Send initial reaction
@@ -58,17 +77,32 @@ cmd({
         }, { quoted: m });
 
         const messageID = sentMsg.key.id;
+        let handlerActive = true;
 
-        // Listen for reply
-        conn.ev.on("messages.upsert", async (msgData) => {  
+        // Set timeout to remove handler after 2 minutes
+        const handlerTimeout = setTimeout(() => {
+            handlerActive = false;
+            conn.ev.off("messages.upsert", messageHandler);
+        }, 120000);
+
+        // Message handler function
+        const messageHandler = async (msgData) => {  
+            if (!handlerActive) return;
+            
             const receivedMsg = msgData.messages[0];  
-            if (!receivedMsg.message) return;  
+            if (!receivedMsg || !receivedMsg.message) return;  
 
-            const receivedText = receivedMsg.message.conversation || receivedMsg.message.extendedTextMessage?.text;  
+            const receivedText = receivedMsg.message.conversation || 
+                              receivedMsg.message.extendedTextMessage?.text || 
+                              receivedMsg.message.buttonsResponseMessage?.selectedButtonId;  
             const senderID = receivedMsg.key.remoteJid;  
             const isReplyToBot = receivedMsg.message.extendedTextMessage?.contextInfo?.stanzaId === messageID;  
 
             if (isReplyToBot && senderID === from) {  
+                clearTimeout(handlerTimeout);
+                conn.ev.off("messages.upsert", messageHandler);
+                handlerActive = false;
+
                 await conn.sendMessage(senderID, {  
                     react: { text: '⬇️', key: receivedMsg.key }  
                 });  
@@ -81,23 +115,25 @@ cmd({
                 }
 
                 try {
-                    // Call the API
-                    const apiUrl = `https://api.agatz.xyz/api/voiceover?text=${encodeURIComponent(text)}&model=${selectedModel.model}`;
-                    
                     // Show processing message
                     await conn.sendMessage(from, {  
                         text: `🔊 Generating voice with ${selectedModel.name} model...`  
                     }, { quoted: receivedMsg });
 
-                    const response = await fetch(apiUrl);
-                    const data = await response.json();
+                    // Call the API
+                    const apiUrl = `https://api.agatz.xyz/api/voiceover?text=${encodeURIComponent(text)}&model=${selectedModel.model}`;
+                    const response = await axios.get(apiUrl, {
+                        timeout: 30000 // 30 seconds timeout
+                    });
+                    
+                    const data = response.data;
 
                     if (data.status === 200) {
                         await conn.sendMessage(from, {  
                             audio: { url: data.data.oss_url },  
                             mimetype: "audio/mpeg",
-                            ptt: true,
-                            caption: `🎤 *${selectedModel.name} Voice*\n📝 *Text:* ${text}`
+                            ptt: true
+                            // Caption removed as requested
                         }, { quoted: receivedMsg });
                     } else {
                         reply("❌ Error generating voice. Please try again.");
@@ -107,10 +143,13 @@ cmd({
                     reply("❌ Error processing your request. Please try again.");
                 }
             }  
-        });
+        };
+
+        // Register the handler
+        conn.ev.on("messages.upsert", messageHandler);
 
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Command Error:", error);
         reply("❌ An error occurred. Please try again.");
     }
 });
