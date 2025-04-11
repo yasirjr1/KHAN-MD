@@ -91,39 +91,62 @@ async (conn, m, { reply }) => {
 
 cmd({
     pattern: "otpbox",
-    alias: ["otp", "getnum", "tempotp"],
-    desc: "Check inbox of a temp number",
+    alias: ["checkotp", "getotp"],
+    desc: "Check OTP messages for temporary number",
     category: "tools",
-    react: "📨",
-    filename: __filename,
-    use: ".otpbox <number>"
+    react: "🔑",
+    use: "<full-number>"
 },
-async (conn, m, { args, reply }) => {
-    const number = args[0];
-    if (!number) return reply("❌ Please provide a number.\n\nExample: `.otpbox +16600887591`");
-
+async (conn, mek, m, { from, args, reply }) => {
     try {
-        const response = await axios.get(`https://api.vreden.my.id/api/tools/fakenumber/message?nomor=${encodeURIComponent(number)}`);
-        const messages = response.data?.result;
-
-        if (!messages || messages.length === 0) {
-            return reply("❌ No messages found for this number.");
+        // Validate input
+        if (!args[0] || !args[0].startsWith("+")) {
+            return reply(`❌ *Usage:* .otpbox <full-number>\nExample: .otpbox +9231034481xx`);
         }
 
-        let text = `╭─「 *OTP Inbox* 」\n│ *Number:* ${number}\n│ *Total Messages:* ${messages.length}\n│\n`;
+        const phoneNumber = args[0].trim();
+        
+        // Fetch OTP messages
+        const { data } = await axios.get(
+            `https://api.vreden.my.id/api/tools/fakenumber/message?nomor=${encodeURIComponent(phoneNumber)}`,
+            { 
+                timeout: 10000,
+                validateStatus: status => status === 200
+            }
+        );
 
-        for (let i = 0; i < Math.min(10, messages.length); i++) {
-            const msg = messages[i];
-            text += `│ ${i + 1}. *From:* ${msg.from}\n`;
-            text += `│     *Time:* ${msg.time_wib}\n`;
-            text += `│     *Message:* ${msg.content}\n│\n`;
+        // Validate response
+        if (!data?.result || !Array.isArray(data.result)) {
+            return reply("⚠ No OTP messages found for this number");
         }
 
-        text += `╰─ Powered by *KHAN MD*`;
+        // Format OTP messages
+        const otpMessages = data.result.map(msg => {
+            // Extract OTP code (matches common OTP patterns)
+            const otpMatch = msg.content.match(/\b\d{4,8}\b/g);
+            const otpCode = otpMatch ? otpMatch[0] : "Not found";
+            
+            return `┌ *From:* ${msg.from || "Unknown"}
+│ *Code:* ${otpCode}
+│ *Time:* ${msg.time_wib || msg.timestamp}
+└ *Message:* ${msg.content.substring(0, 50)}${msg.content.length > 50 ? "..." : ""}`;
+        }).join("\n\n");
 
-        await reply(text);
-    } catch (e) {
-        console.error("OTPBOX ERROR:", e);
-        reply("❌ Failed to fetch messages. Make sure the number is correct.");
+        await reply(
+            `╭──「 🔑 OTP MESSAGES 」\n` +
+            `│ Number: ${phoneNumber}\n` +
+            `│ Messages Found: ${data.result.length}\n` +
+            `│\n` +
+            `${otpMessages}\n` +
+            `╰──「 📌 Use .tempnum to get numbers 」`
+        );
+
+    } catch (err) {
+        console.error("OTP Check Error:", err);
+        const errorMsg = err.code === "ECONNABORTED" ?
+            "⌛ OTP check timed out. Try again later" :
+            `⚠ Error: ${err.response?.data?.error || err.message}`;
+        
+        reply(`${errorMsg}\n\nUsage: .otpbox +9231034481xx`);
     }
 });
