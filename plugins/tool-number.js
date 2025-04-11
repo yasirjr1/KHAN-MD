@@ -4,45 +4,38 @@ const axios = require("axios");
 cmd({
     pattern: "tempnum",
     alias: ["fakenum", "tempnumber"],
-    desc: "Generate temporary numbers for any country",
+    desc: "Get temporary numbers for any country",
     category: "tools",
     react: "📱",
     use: ".tempnum us"
 },
 async (Void, m, { args, reply }) => {
     try {
-        const countryCode = args[0]?.toLowerCase() || "us";
+        const countryCode = args[0]?.toLowerCase() || "us"; // Default: US
         
         const response = await axios.get(
             `https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${countryCode}`,
             { timeout: 5000 }
         );
 
-        const data = response.data;
+        const numbers = response.data?.result || [];
 
-        if (!data?.result || !Array.isArray(data.result) {
-            return reply(`❌ No numbers found for *${countryCode.toUpperCase()}*.\nTry another country code!`);
+        if (numbers.length === 0) {
+            return reply(`❌ No numbers found for *${countryCode.toUpperCase()}*!`);
         }
 
-        const numbers = data.result.slice(0, 15);
-        const country = numbers[0]?.country || countryCode.toUpperCase();
-
-        let numberList = numbers.map((num, i) => `${i + 1}. ${num.number}`).join("\n");
+        // Extract JUST the numbers (no extra formatting)
+        const numberList = numbers.map(num => num.number).join("\n");
 
         await reply(
-            `╭──「 📱 *TEMP NUMBERS* 」\n` +
-            `│\n` +
-            `│ 🌍 *Country:* ${country}\n` +
-            `│ 🔢 *Available Numbers:*\n` +
-            `${numberList}\n` +
-            `│\n` +
-            `│ 💡 *Usage:* .otpbox <number>\n` +
-            `╰──「 Powered by *KHAN-MD* 」`
+            `📱 *Temporary Numbers (${countryCode.toUpperCase()})*:\n\n` +
+            `${numberList}\n\n` +
+            `_Use: .otpbox <number>_`
         );
 
     } catch (err) {
         console.error("API Error:", err);
-        reply("⚠ API is currently down or not responding. Try again later!");
+        reply("⚠ API error. Try again later!");
     }
 });
 
