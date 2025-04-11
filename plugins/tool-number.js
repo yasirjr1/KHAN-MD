@@ -11,9 +11,8 @@ cmd({
 },
 async (Void, m, { args, reply }) => {
     try {
-        const countryCode = args[0]?.toLowerCase() || "us"; // Default to US if no code provided
+        const countryCode = args[0]?.toLowerCase() || "us";
         
-        // Fetch data with error handling
         const response = await axios.get(
             `https://api.vreden.my.id/api/tools/fakenumber/listnumber?id=${countryCode}`,
             { timeout: 5000 }
@@ -21,16 +20,25 @@ async (Void, m, { args, reply }) => {
 
         const data = response.data;
 
-        // Check if response contains valid data
         if (!data || !Array.isArray(data.result) || data.result.length === 0) {
             return reply(`❌ No numbers found for *${countryCode.toUpperCase()}*.\nTry another country code!`);
         }
 
-        // Extract numbers safely
-        const numbers = data.result.slice(0, 15); // Limit to 15 numbers max
-        const country = numbers[0]?.country || countryCode.toUpperCase();
+        const numbers = data.result.slice(0, 15);
+        
+        // Additional check to ensure the first element is valid
+        if (numbers.length === 0) {
+            return reply("❌ Unexpected error: No numbers available.");
+        }
 
-        // Format the output
+        const firstNumber = numbers[0];
+        let country;
+        if (typeof firstNumber === 'object' && firstNumber !== null && firstNumber.country) {
+            country = firstNumber.country;
+        } else {
+            country = countryCode.toUpperCase();
+        }
+
         let numberList = numbers.map((num, i) => `${i + 1}. ${num.number}`).join("\n");
 
         await reply(
