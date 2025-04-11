@@ -71,9 +71,10 @@ async (conn, mek, m, {
         menuText += "╰━━━⪼\n\n";
         menuText += `📌 *Reply with the number to select voice model for:*\n"${inputText}"`;
 
-        // Send menu message
+        // Send menu message with image
         const sentMsg = await conn.sendMessage(from, {  
-            text: menuText
+            image: { url: "https://files.catbox.moe/7zfdcq.jpg" },
+            caption: menuText
         }, { quoted: m });
 
         const messageID = sentMsg.key.id;
@@ -118,7 +119,7 @@ async (conn, mek, m, {
                 try {
                     // Show processing message
                     await conn.sendMessage(from, {  
-                        text: `🔊 Generating voice with ${selectedModel.name} model...`  
+                        text: `🔊 Generating audio with ${selectedModel.name} voice...`  
                     }, { quoted: receivedMsg });
 
                     // Call the API
@@ -132,11 +133,11 @@ async (conn, mek, m, {
                     if (data.status === 200) {
                         await conn.sendMessage(from, {  
                             audio: { url: data.data.oss_url },  
-                            mimetype: "audio/mpeg",
-                            ptt: true
+                            mimetype: "audio/mpeg"
+                            // Removed ptt: true to send as regular audio
                         }, { quoted: receivedMsg });
                     } else {
-                        reply("❌ Error generating voice. Please try again.");
+                        reply("❌ Error generating audio. Please try again.");
                     }
                 } catch (error) {
                     console.error("API Error:", error);
