@@ -34,13 +34,13 @@ async (conn, mek, m, {
     reply 
 }) => {
     try {
-        // Split the command and text
-        const [cmd, ...textParts] = args.split(" ");
-        const text = textParts.join(" ");
-        
-        if (!text) {
+        // Check if args[0] exists (user provided text)
+        if (!args[0]) {
             return reply("Please provide text after the command.\nExample: .aivoice hello");
         }
+
+        // Get the full input text
+        const inputText = args.join(' ');
 
         // Send initial reaction
         await conn.sendMessage(from, {  
@@ -69,7 +69,7 @@ async (conn, mek, m, {
             menuText += `┃▸ ${model.number}. ${model.name}\n`;
         });
         menuText += "╰━━━⪼\n\n";
-        menuText += `📌 *Reply with the number to select voice model for:*\n"${text}"`;
+        menuText += `📌 *Reply with the number to select voice model for:*\n"${inputText}"`;
 
         // Send menu message
         const sentMsg = await conn.sendMessage(from, {  
@@ -83,6 +83,7 @@ async (conn, mek, m, {
         const handlerTimeout = setTimeout(() => {
             handlerActive = false;
             conn.ev.off("messages.upsert", messageHandler);
+            reply("⌛ Voice selection timed out. Please try the command again.");
         }, 120000);
 
         // Message handler function
@@ -121,7 +122,7 @@ async (conn, mek, m, {
                     }, { quoted: receivedMsg });
 
                     // Call the API
-                    const apiUrl = `https://api.agatz.xyz/api/voiceover?text=${encodeURIComponent(text)}&model=${selectedModel.model}`;
+                    const apiUrl = `https://api.agatz.xyz/api/voiceover?text=${encodeURIComponent(inputText)}&model=${selectedModel.model}`;
                     const response = await axios.get(apiUrl, {
                         timeout: 30000 // 30 seconds timeout
                     });
@@ -133,7 +134,6 @@ async (conn, mek, m, {
                             audio: { url: data.data.oss_url },  
                             mimetype: "audio/mpeg",
                             ptt: true
-                            // Caption removed as requested
                         }, { quoted: receivedMsg });
                     } else {
                         reply("❌ Error generating voice. Please try again.");
