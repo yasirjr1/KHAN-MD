@@ -9,11 +9,11 @@ cmd({
     react: "📱",
     use: "<country-code>"
 },
-async (conn, mek, m, { from, args, reply, prefix }) => {
+async (conn, mek, m, { from, args, reply }) => {
     try {
         // Mandatory country code check
         if (!args || args.length < 1) {
-            return reply(`❌ *Usage:* .tempnum <country-code>\nExample: .tempnum us\n\n📦 Use .otpinbox <number>* to check OTPs`);
+            return reply(`❌ *Usage:* .tempnum <country-code>\nExample: .tempnum us\n\n📦 Use .otpbox <number>* to check OTPs`);
         }
 
         const countryCode = args[0].toLowerCase();
@@ -34,7 +34,7 @@ async (conn, mek, m, { from, args, reply, prefix }) => {
         }
 
         if (data.result.length === 0) {
-            return reply(`📭 No numbers available for *${countryCode.toUpperCase()}*\nTry another country code!\n\nUse .otpinbox <number> after selection`);
+            return reply(`📭 No numbers available for *${countryCode.toUpperCase()}*\nTry another country code!\n\nUse .otpbox <number> after selection`);
         }
 
         // Process numbers
@@ -51,8 +51,8 @@ async (conn, mek, m, { from, args, reply, prefix }) => {
             `│ Numbers Found: ${numbers.length}\n` +
             `│\n` +
             `${numberList}\n\n` +
-            `╰──「 📦 USE: .otpinbox <number> 」\n` +
-            `_Example: .otpinbox +1234567890_`
+            `╰──「 📦 USE: .otpbox <number> 」\n` +
+            `_Example: .otpbox +1234567890_`
         );
 
     } catch (err) {
