@@ -20,24 +20,12 @@ async (Void, m, { args, reply }) => {
 
         const data = response.data;
 
-        if (!data || !Array.isArray(data.result) || data.result.length === 0) {
+        if (!data?.result || !Array.isArray(data.result) {
             return reply(`❌ No numbers found for *${countryCode.toUpperCase()}*.\nTry another country code!`);
         }
 
         const numbers = data.result.slice(0, 15);
-        
-        // Additional check to ensure the first element is valid
-        if (numbers.length === 0) {
-            return reply("❌ Unexpected error: No numbers available.");
-        }
-
-        const firstNumber = numbers[0];
-        let country;
-        if (typeof firstNumber === 'object' && firstNumber !== null && firstNumber.country) {
-            country = firstNumber.country;
-        } else {
-            country = countryCode.toUpperCase();
-        }
+        const country = numbers[0]?.country || countryCode.toUpperCase();
 
         let numberList = numbers.map((num, i) => `${i + 1}. ${num.number}`).join("\n");
 
