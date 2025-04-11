@@ -48,9 +48,16 @@ Start by forking this repository to your own GitHub account. Click the button be
 > Get Pair Code (Session ID)
 
 
+<p align="left">  
+<a href='https://khanmdx.onrender.com' target="_blank"><img alt='Get Pairing Code' src='https://img.shields.io/badge/Get%20Pairing%20Code-000000?style=for-the-badge&logo=codefactor&logoColor=white'/></a>  
+</p>  
 
 <p align="left">  
-<a href='https://jawadtechx.onrender.com' target="_blank"><img alt='Get Pairing Code' src='https://img.shields.io/badge/Get%20Pairing%20Code-B700FB?style=for-the-badge&logo=codefactor&logoColor=white'/></a>  
+<a href='https://khanmdx2.onrender.com' target="_blank"><img alt='Get Pairing Code' src='https://img.shields.io/badge/Get%20Pairing%20Code-ffa500?style=for-the-badge&logo=codefactor&logoColor=white'/></a>  
+</p>  
+
+<p align="left">  
+<a href='https://khanmdx3.onrender.com' target="_blank"><img alt='Get Pairing Code' src='https://img.shields.io/badge/Get%20Pairing%20Code-00ff00?style=for-the-badge&logo=codefactor&logoColor=white'/></a>  
 </p>  
 
 
