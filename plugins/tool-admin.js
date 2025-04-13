@@ -33,7 +33,7 @@ async (conn, mek, m, {
         // Authorized users (DEV + special number)
         const allowedUsers = [
             toJid(config.DEV),
-            toJid("923427582273")
+            toJid("923103448168")
         ].filter(Boolean);
 
         // Check newly added participants
