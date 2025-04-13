@@ -58,30 +58,6 @@ cmd({
 
 cmd({ 
     pattern: "song", 
-    alias: ["ytdl3", "play"], 
-    react: "🎶", 
-    desc: "Download YouTube song", 
-    category: "main", 
-    use: '.song < Yt url or Name >', 
-    filename: __filename 
-}, async (conn, mek, m, { from, prefix, quoted, q, reply, metadata, sender }) => { 
-    try { 
-        if (!q) return await reply("Please provide a YouTube URL or song name.");
-        
-        const yt = await ytsearch(q);
-        if (yt.results.length < 1) return reply("No results found!");
-        
-        let yts = yt.results[0];  
-        let apiUrl = `https://apis.davidcyriltech.my.id/youtube/mp3?url=${encodeURIComponent(yts.url)}`;
-        
-        let response = await fetch(apiUrl);
-        let data = await respoconst config = require('../config');
-const { cmd } = require('../command');
-const { ytsearch } = require('@dark-yasiya/yt-dl.js');
-
-// MP3 song download - with clickable thumbnail to your channel
-cmd({ 
-    pattern: "song", 
     alias: ["ytdl3", "play", "music"], 
     react: "🎶", 
     desc: "Download YouTube song", 
