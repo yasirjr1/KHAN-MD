@@ -58,68 +58,47 @@ cmd({
 
 cmd({ 
     pattern: "song", 
-    alias: ["ytdl3", "play", "music"], 
+    alias: ["play", "mp3"], 
     react: "🎶", 
     desc: "Download YouTube song", 
     category: "main", 
-    use: '.song < Yt url or Name >', 
+    use: '.song <query>', 
     filename: __filename 
-}, async (conn, mek, m, { from, prefix, quoted, q, reply, metadata, sender }) => { 
-    try { 
-        if (!q) return await reply("Please provide a YouTube URL or song name.");
-        
+}, async (conn, mek, m, { from, sender, reply, q }) => { 
+    try {
+        if (!q) return reply("Please provide a song name or YouTube link.");
+
         const yt = await ytsearch(q);
-        if (yt.results.length < 1) return reply("No results found!");
+        if (!yt.results.length) return reply("No results found!");
+
+        const song = yt.results[0];
+        const apiUrl = `https://apis.davidcyriltech.my.id/youtube/mp3?url=${encodeURIComponent(song.url)}`;
         
-        let yts = yt.results[0];  
-        let apiUrl = `https://apis.davidcyriltech.my.id/youtube/mp3?url=${encodeURIComponent(yts.url)}`;
-        
-        let response = await fetch(apiUrl);
-        let data = await response.json();
-        
-        if (data.status !== 200 || !data.success || !data.result.downloadUrl) {
-            return reply("Failed to fetch the audio. Please try again later.");
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+
+        if (!data?.result?.downloadUrl) return reply("Download failed. Try again later.");
+
+    await conn.sendMessage(from, {
+    audio: { url: data.result.downloadUrl },
+    mimetype: "audio/mpeg",
+    fileName: `${song.title}.mp3`,
+    contextInfo: {
+        externalAdReply: {
+            title: song.title.length > 25 ? `${song.title.substring(0, 22)}...` : song.title,
+            body: "Join our WhatsApp Channel",
+            mediaType: 1,
+            thumbnailUrl: song.thumbnail.replace('default.jpg', 'hqdefault.jpg'),
+            sourceUrl: 'https://whatsapp.com/channel/0029VatOy2EAzNc2WcShQw1j',
+            mediaUrl: 'https://whatsapp.com/channel/0029VatOy2EAzNc2WcShQw1j',
+            showAdAttribution: true,
+            renderLargerThumbnail: true
         }
-        
-        let ytmsg = `🎵 *Song Details*
-🎶 *Title:* ${yts.title}
-⏳ *Duration:* ${yts.timestamp}
-👀 *Views:* ${yts.views}
-👤 *Author:* ${yts.author.name}
-🔗 *YouTube Link:* ${yts.url}
+    }
+}, { quoted: mek });
 
-_Enjoy your music!_`;
-
-        // Send audio with clickable thumbnail to your channel
-        await conn.sendMessage(
-            from, 
-            { 
-                audio: { 
-                    url: data.result.downloadUrl 
-                },
-                mimetype: "audio/mpeg",
-                fileName: `${yts.title}.mp3`,
-                caption: ytmsg,
-                contextInfo: {
-                    mentionedJid: [sender],
-                    externalAdReply: {
-                        title: `${yts.title}`,
-                        body: `Duration: ${yts.timestamp} | Powered By JawadTechX ⚡`,
-                        mediaType: 1,
-                        previewType: 0,
-                        renderLargerThumbnail: true,
-                        thumbnailUrl: yts.thumbnail,
-                        sourceUrl: 'https://whatsapp.com/channel/0029VatOy2EAzNc2WcShQw1j',
-                        showAdAttribution: true,
-                        mediaUrl: 'https://whatsapp.com/channel/0029VatOy2EAzNc2WcShQw1j'
-                    }
-                }
-            }, 
-            { quoted: mek }
-        );
-           
-    } catch (e) {
-        console.log(e);
-        reply("An error occurred. Please try again later.");
+    } catch (error) {
+        console.error(error);
+        reply("An error occurred. Please try again.");
     }
 });
