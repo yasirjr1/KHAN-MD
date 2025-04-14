@@ -4,7 +4,7 @@ const { cmd } = require('../command');
 
 cmd({ on: "body" }, async (conn, mek, m, { from, body, isOwner }) => {
   try {
-    const url = 'https://raw.githubusercontent.com/XdTechPro/KHAN-DATA/main/autosticker/autosticker.json';
+    const url = 'https://raw.githubusercontent.com/XdTechPro/KHAN-DATA/main/autosticker.json';
     const { data } = await axios.get(url);
 
     for (const text in data) {
