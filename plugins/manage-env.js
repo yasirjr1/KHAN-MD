@@ -106,7 +106,7 @@ async (conn, mek, m, { from, args, isOwner, reply }) => {
 cmd({
     pattern: "auto-voice",
     alias: ["autovoice"],
-    desc: "enable or disable auto-sticker.",
+    desc: "Enable or disable auto voice replies",
     category: "settings",
     filename: __filename
 },    
@@ -114,15 +114,15 @@ async (conn, mek, m, { from, args, isOwner, reply }) => {
     if (!isOwner) return reply("*📛 ᴏɴʟʏ ᴛʜᴇ ᴏᴡɴᴇʀ ᴄᴀɴ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ!*");
 
     const status = args[0]?.toLowerCase();
-    // Check the argument for enabling or disabling the anticall feature
-    if (args[0] === "on") {
+    // Default value for AUTO_VOICE is "false"
+    if (status === "on") {
         config.AUTO_VOICE = "true";
-        return reply("auto-voice feature is now enabled.");
-    } else if (args[0] === "off") {
+        return reply("Auto voice replies are now enabled.");
+    } else if (status === "off") {
         config.AUTO_VOICE = "false";
-        return reply("auto-voice feature is now disabled.");
+        return reply("Auto voice replies are now disabled.");
     } else {
-        return reply(`_example:  .auto-voice on_`);
+        return reply(`Example: . auto-voice on`);
     }
 });
 
