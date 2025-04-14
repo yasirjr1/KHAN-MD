@@ -1,9 +1,12 @@
 const axios = require('axios');
 const config = require('../config');
-const { cmd } = require('../command');
+const fs = require('fs');
+const path = require('path');
+const {cmd , commands} = require('../command')
+
 
 // Replace this with your actual GitHub RAW JSON URL
-const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/your-username/your-repo/main/autoreply.json';
+const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/XdTechPro/KHAN-DATA/main/autoreply.json';
 
 cmd({
   on: "body"
