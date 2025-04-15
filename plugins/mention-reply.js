@@ -6,7 +6,7 @@ cmd({
   on: "body"
 }, async (conn, m, { isGroup }) => {
   try {
-    if (!config.MENTION_REPLY || !isGroup) return;
+    if (config.MENTION_REPLY !== 'true' || !isGroup) return;
     if (!m.mentionedJid || m.mentionedJid.length === 0) return;
 
     const voiceClips = [
@@ -26,7 +26,6 @@ cmd({
     const botNumber = conn.user.id.split(":")[0] + '@s.whatsapp.net';
 
     if (m.mentionedJid.includes(botNumber)) {
-      // Fetch thumbnail as buffer using axios
       const thumbnailRes = await axios.get(config.MENU_IMAGE_URL || "https://files.catbox.moe/c836ws.png", {
         responseType: 'arraybuffer'
       });
@@ -46,7 +45,7 @@ cmd({
             mediaType: 1,
             renderLargerThumbnail: true,
             thumbnail: thumbnailBuffer,
-            mediaUrl: "https://files.catbox.moe/l2t3e0.jpg",
+            mediaUrl: "https://files.catbox.moe/l2t3e0.jpg", // Static image URL
             sourceUrl: "https://wa.me/message/INB2QVGXHQREO1",
             showAdAttribution: true
           }
