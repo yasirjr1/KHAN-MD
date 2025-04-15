@@ -4,13 +4,18 @@ const os = require("os");
 const { runtime } = require('../lib/functions');
 
 cmd({
-    pattern: "menux",
+    pattern: "menu",
     desc: "Show interactive menu system",
     category: "menu",
     react: "🧾",
     filename: __filename
 }, async (conn, mek, m, { from, reply }) => {
     try {
+        // Show loading reaction
+        await conn.sendMessage(from, {
+            react: { text: '⏳', key: mek.key }
+        });
+
         const menuCaption = `╭━━━〔 *${config.BOT_NAME}* 〕━━━┈⊷
 ┃★╭──────────────
 ┃★│ 👑 Owner : *${config.OWNER_NAME}*
@@ -18,7 +23,7 @@ cmd({
 ┃★│ 💻 Type : *NodeJs*
 ┃★│ 🚀 Platform : *Heroku*
 ┃★│ ⚙️ Mode : *[${config.MODE}]*
-┃★│ 🔣 Prifix : *[${config.PREFIX}]*
+┃★│ 🔣 Prefix : *[${config.PREFIX}]*
 ┃★│ 🏷️ Version : *3.0.0 Bᴇᴛᴀ*
 ┃★╰──────────────
 ╰━━━━━━━━━━━━━━━┈⊷
@@ -38,35 +43,38 @@ cmd({
 ╰──────────────┈⊷
 > ${config.DESCRIPTION}`;
 
+        const contextInfo = {
+            mentionedJid: [m.sender],
+            forwardingScore: 999,
+            isForwarded: true,
+            forwardedNewsletterMessageInfo: {
+                newsletterJid: '120363354023106228@newsletter',
+                newsletterName: config.OWNER_NAME,
+                serverMessageId: 143
+            }
+        };
+
         const sentMsg = await conn.sendMessage(
             from,
             {
                 image: { url: config.MENU_IMAGE_URL || 'https://files.catbox.moe/7zfdcq.jpg' },
                 caption: menuCaption,
-                contextInfo: {
-                    mentionedJid: [m.sender],
-                    forwardingScore: 999,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363354023106228@newsletter',
-                        newsletterName: config.OWNER_NAME,
-                        serverMessageId: 143
-                    }
-                }
+                contextInfo: contextInfo
             },
             { quoted: mek }
         );
 
-        // Send menu audio
+        // Send menu audio only once
         await conn.sendMessage(from, {
             audio: { url: 'https://github.com/XdTechPro/KHAN-DATA/raw/refs/heads/main/autovoice/menunew.m4a' },
             mimetype: 'audio/mp4',
-            ptt: true
+            ptt: true,
+            contextInfo: contextInfo
         }, { quoted: mek });
 
         const messageID = sentMsg.key.id;
 
-        // Complete menu data with all your original content
+        // Complete menu data
         const menuData = {
             '1': {
                 title: "📥 *Download Menu* 📥",
@@ -304,7 +312,7 @@ cmd({
 ┃★│ • pat @user
 ┃★╰──────────────
 ┃★╭──────────────
-┃★| 😂 *Funny*
+┃★│ 😂 *Funny*
 ┃★│ • bully @user
 ┃★│ • bonk @user
 ┃★│ • yeet @user
@@ -359,7 +367,7 @@ cmd({
                 const senderID = receivedMsg.key.remoteJid;
 
                 await conn.sendMessage(senderID, {
-                    react: { text: '⬇️', key: receivedMsg.key }
+                    react: { text: '⏳', key: receivedMsg.key }
                 });
 
                 if (menuData[receivedText]) {
@@ -370,30 +378,27 @@ cmd({
                         {
                             image: { url: config.MENU_IMAGE_URL || 'https://files.catbox.moe/7zfdcq.jpg' },
                             caption: selectedMenu.content,
-                            contextInfo: {
-                                mentionedJid: [m.sender],
-                                forwardingScore: 999,
-                                isForwarded: true
-                            }
+                            contextInfo: contextInfo
                         },
                         { quoted: receivedMsg }
                     );
 
-                    // Send audio for selected menu
                     await conn.sendMessage(senderID, {
-                        audio: { url: 'https://github.com/XdTechPro/KHAN-DATA/raw/refs/heads/main/autovoice/menunew.m4a' },
-                        mimetype: 'audio/mp4',
-                        ptt: true
-                    }, { quoted: receivedMsg });
+                        react: { text: '✅', key: receivedMsg.key }
+                    });
 
                 } else {
                     await conn.sendMessage(
                         senderID,
                         {
                             text: `❌ *Invalid Option!* ❌\n\nPlease reply with a number between 1-10 to select a menu.\n\n*Example:* Reply with "1" for Download Menu\n\n> ${config.DESCRIPTION}`,
+                            contextInfo: contextInfo
                         },
                         { quoted: receivedMsg }
                     );
+                    await conn.sendMessage(senderID, {
+                        react: { text: '❌', key: receivedMsg.key }
+                    });
                 }
             }
         };
@@ -408,6 +413,9 @@ cmd({
 
     } catch (e) {
         console.error('Menu Error:', e);
+        await conn.sendMessage(from, {
+            react: { text: '❌', key: mek.key }
+        });
         reply(`❌ An error occurred: ${e}\n\n> ${config.DESCRIPTION}`);
     }
 });
