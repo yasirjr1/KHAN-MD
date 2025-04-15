@@ -68,8 +68,7 @@ cmd({
         await conn.sendMessage(from, {
             audio: { url: 'https://github.com/XdTechPro/KHAN-DATA/raw/refs/heads/main/autovoice/menunew.m4a' },
             mimetype: 'audio/mp4',
-            ptt: true,
-            contextInfo: contextInfo
+            ptt: true,       
         }, { quoted: mek });
 
         const messageID = sentMsg.key.id;
