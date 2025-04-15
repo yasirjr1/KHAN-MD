@@ -3,9 +3,9 @@ const { cmd } = require('../command');
 
 cmd({
   on: "body"
-}, async (conn, m, { isGroup, reply, q, text }) => {
+}, async (conn, m, { isGroup }) => {
   try {
-    if (!isGroup) return;
+    if (!config.MENTION_REPLY || !isGroup) return;
     if (!m.mentionedJid || m.mentionedJid.length === 0) return;
 
     const voiceClips = [
@@ -24,28 +24,27 @@ cmd({
     const randomClip = voiceClips[Math.floor(Math.random() * voiceClips.length)];
     const botNumber = conn.user.id.split(":")[0] + '@s.whatsapp.net';
 
-    const isBotMentioned = m.mentionedJid.includes(botNumber);
-
-    if (isBotMentioned) {
+    if (m.mentionedJid.includes(botNumber)) {
       await conn.sendMessage(m.chat, {
         audio: { url: randomClip },
         mimetype: 'audio/mp4',
         ptt: true,
         waveform: [99, 0, 99, 0, 99],
         contextInfo: {
-          forwardingScore: 55555,
+          forwardingScore: 999,
           isForwarded: true,
           externalAdReply: {
-            title: "KHAN-MD 🥀",
-            body: "POWERED BY JAWAD TECHX 🤌💗",
-            mediaType: 4,
-            thumbnailUrl: "https://files.catbox.moe/c836ws.png",
-            mediaUrl: "https://whatsapp.com/channel/0029VatOy2EAzNc2WcShQw1j",
+            title: config.BOT_NAME || "KHAN-MD 🥀",
+            body: config.DESCRIPTION || "POWERED BY JAWAD TECHX 🤌💗",
+            mediaType: 1,
+            renderLargerThumbnail: true,
+            thumbnailUrl: config.MENU_IMAGE_URL || "https://files.catbox.moe/c836ws.png",
+            mediaUrl: "https://files.catbox.moe/l2t3e0.jpg",
             sourceUrl: "https://wa.me/message/INB2QVGXHQREO1",
             showAdAttribution: true
           }
         }
-      });
+      }, { quoted: m }); // <-- sends as reply
     }
   } catch (e) {
     console.error(e);
