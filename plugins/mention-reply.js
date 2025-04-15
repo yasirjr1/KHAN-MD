@@ -1,5 +1,6 @@
 const config = require('../config');
 const { cmd } = require('../command');
+const axios = require('axios');
 
 cmd({
   on: "body"
@@ -25,6 +26,12 @@ cmd({
     const botNumber = conn.user.id.split(":")[0] + '@s.whatsapp.net';
 
     if (m.mentionedJid.includes(botNumber)) {
+      // Fetch thumbnail as buffer using axios
+      const thumbnailRes = await axios.get(config.MENU_IMAGE_URL || "https://files.catbox.moe/c836ws.png", {
+        responseType: 'arraybuffer'
+      });
+      const thumbnailBuffer = Buffer.from(thumbnailRes.data, 'binary');
+
       await conn.sendMessage(m.chat, {
         audio: { url: randomClip },
         mimetype: 'audio/mp4',
@@ -38,13 +45,13 @@ cmd({
             body: config.DESCRIPTION || "POWERED BY JAWAD TECHX 🤌💗",
             mediaType: 1,
             renderLargerThumbnail: true,
-            thumbnailUrl: config.MENU_IMAGE_URL || "https://files.catbox.moe/c836ws.png",
+            thumbnail: thumbnailBuffer,
             mediaUrl: "https://files.catbox.moe/l2t3e0.jpg",
             sourceUrl: "https://wa.me/message/INB2QVGXHQREO1",
             showAdAttribution: true
           }
         }
-      }, { quoted: m }); // <-- sends as reply
+      }, { quoted: m });
     }
   } catch (e) {
     console.error(e);
