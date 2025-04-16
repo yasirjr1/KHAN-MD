@@ -1,14 +1,14 @@
 const { cmd } = require("../command");
 
 cmd({
-  pattern: "vv2",
+  pattern: "vv3",
   alias: ["wah", "ohh", "oho", "🙂", "nice", "ok"],
   desc: "Owner Only - retrieve quoted message back to user",
   category: "owner",
   filename: __filename
-}, async (client, message, match, { from, isOwner }) => {
+}, async (client, message, match, { from, isCreator }) => {
   try {
-    if (!isOwner) {
+    if (!isCreator) {
       return; // Simply return without any response if not owner
     }
 
