@@ -72,8 +72,8 @@ async (conn, mek, m, { from, reply, q, text, isCreator, fromMe }) => {
 
 
 cmd({
-    pattern: "vv3",
-    alias: ['lx', '🔥'],
+    pattern: "vv2",
+    alias: ['retrive', '🔥'],
     desc: "Fetch and resend a ViewOnce message content (image/video).",
     category: "misc",
     use: '<query>',
