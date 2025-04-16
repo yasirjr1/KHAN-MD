@@ -10,24 +10,24 @@
     "SESSION_ID": {
       "description": "Put the session-id here.",
       "required": true,
-      "value": ""
+      "value": "KHAN-MD~hC10gQbC#yOt8Gj53RMWwWGpXPChRlo-vRCeYbxlH7zWMAKkk-Vw"
     },  
     
     "STICKER_NAME": {
       "description": "type your sticker pack name.",
-      "required": false,
-      "value": "KHAN-MD"
+      "required": true,
+      "value": "Asad Malik"
     }, 
       
     "PREFIX": {
       "description": "paste your bot prefix note! Don't apply null prefix.",
-      "required": false,
+      "required": true,
       "value": "."
     },
     
     "MODE": {
       "description": "select your bot work type public-private-inbox-group.",
-      "required": false,
+      "required": true,
       "value": "public"
       
     },
@@ -35,8 +35,8 @@
     
     "ALWAYS_ONLINE": {
       "description": "Make it true if want always online.",
-      "required": false,
-      "value": "false"  
+      "required": true,
+      "value": "true"  
     },    
   
     "AUTO_VOICE": {
@@ -79,27 +79,27 @@
     "AUTO_STATUS_MSG": {
       "description": "Type custom message on status reply",
       "required": true,
-      "value": "*SEEN YOUR STATUS BY KHAN-MD 🖤*"
+      "value": "*SEEN YOUR STATUS BY ASAD MALIK🖤*"
    
      }, 
     
     "OWNER_NAME": {
       "description": "Type Bot Owner Name.",
-      "required": false,
-      "value": "Jᴀᴡᴀᴅ TᴇᴄʜX"
+      "required": true,
+      "value": "ASAD MALIK"
 }, 
 
     "OWNER_NUMBER": {
       "description": "put the owner number for bot.",
-      "required": false,
-      "value": "92310344XXXX"
+      "required": true,
+      "value": "923275374285"
 
     }, 
 
     "BOT_NAME": {
       "description": "Type here the bot name.",
-      "required": false,
-      "value": "KHAN-MD"
+      "required": true,
+      "value": "ASAD-MALIK"
 
       }, 
 
